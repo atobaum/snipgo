@@ -113,8 +113,8 @@ services:
 snip-go/
 ├── cmd/snipgo/       # CLI entry point
 ├── internal/
-│   ├── core/        # Business logic
-│   ├── parser/       # YAML frontmatter parsing
+│   ├── core/        # Business logic (includes frontmatter parsing)
+│   ├── config/       # Configuration management
 │   └── storage/      # File system operations
 ├── app/              # Wails backend
 ├── frontend/         # React frontend
