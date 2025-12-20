@@ -20,10 +20,15 @@ vendor/
 go.work
 
 # Frontend
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.pnpm-store/
+.pnpm-store/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
 
 # IDE
 .idea/
