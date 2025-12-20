@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"snip-go/internal/config"
 )
 
 // FileSystem handles file system operations for snippets
@@ -14,12 +16,12 @@ type FileSystem struct {
 
 // NewFileSystem creates a new FileSystem instance
 func NewFileSystem() (*FileSystem, error) {
-	homeDir, err := os.UserHomeDir()
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	snippetsDir := filepath.Join(homeDir, ".snipgo", "snippets")
+	snippetsDir := cfg.DataDirectory
 	if err := os.MkdirAll(snippetsDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create snippets directory: %w", err)
 	}

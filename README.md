@@ -32,6 +32,32 @@ cd frontend && pnpm run build && cd ..
 wails build
 ```
 
+## Configuration
+
+SnipGo supports configuration through environment variables and config file:
+
+1. **Environment Variable** (highest priority):
+   ```bash
+   export SNIPGO_DATA_DIR="/path/to/your/snippets"
+   ```
+
+2. **Config File** (`~/.config/snip-go/config.yaml`):
+   ```yaml
+   data_directory: ~/my-snippets
+   ```
+
+3. **Default**: `~/.snipgo/snippets/`
+
+### CLI Configuration Commands
+
+```bash
+# Show current configuration
+snipgo config show
+
+# Set data directory
+snipgo config set data_directory /path/to/snippets
+```
+
 ## Usage
 
 ### CLI
