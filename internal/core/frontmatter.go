@@ -1,10 +1,8 @@
-package parser
+package core
 
 import (
 	"fmt"
 	"strings"
-
-	"snip-go/internal/core"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,7 +12,7 @@ const (
 )
 
 // ParseFrontmatter parses a markdown file with YAML frontmatter
-func ParseFrontmatter(content []byte) (*core.Snippet, error) {
+func ParseFrontmatter(content []byte) (*Snippet, error) {
 	text := string(content)
 	lines := strings.Split(text, "\n")
 
@@ -40,7 +38,7 @@ func ParseFrontmatter(content []byte) (*core.Snippet, error) {
 
 	// Parse YAML frontmatter
 	frontmatterText := strings.Join(frontmatterLines, "\n")
-	snippet := &core.Snippet{}
+	snippet := &Snippet{}
 	if err := yaml.Unmarshal([]byte(frontmatterText), snippet); err != nil {
 		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
 	}
@@ -56,7 +54,7 @@ func ParseFrontmatter(content []byte) (*core.Snippet, error) {
 }
 
 // SerializeFrontmatter converts a snippet to markdown with YAML frontmatter
-func SerializeFrontmatter(snippet *core.Snippet) ([]byte, error) {
+func SerializeFrontmatter(snippet *Snippet) ([]byte, error) {
 	// Validate snippet
 	if err := snippet.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid snippet: %w", err)

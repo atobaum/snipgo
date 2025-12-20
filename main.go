@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 
 	"snip-go/app"
@@ -31,7 +30,6 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 1},
 		OnStartup:        appInstance.OnStartup,
-		Context:          context.Background(),
 	})
 
 	if err != nil {

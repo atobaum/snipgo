@@ -5,9 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
-	"snip-go/internal/parser"
 	"snip-go/internal/storage"
 )
 
@@ -55,7 +53,7 @@ func (m *Manager) LoadAll() error {
 			continue
 		}
 
-		snippet, err := parser.ParseFrontmatter(content)
+		snippet, err := ParseFrontmatter(content)
 		if err != nil {
 			// Log error but continue loading other files
 			fmt.Printf("Warning: failed to parse file %s: %v\n", filepath, err)
@@ -86,7 +84,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 	snippet.UpdateTimestamp()
 
 	// Serialize to markdown
-	content, err := parser.SerializeFrontmatter(snippet)
+		content, err := SerializeFrontmatter(snippet)
 	if err != nil {
 		return fmt.Errorf("failed to serialize snippet: %w", err)
 	}
@@ -111,8 +109,7 @@ func (m *Manager) Delete(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	snippet, exists := m.snippets[id]
-	if !exists {
+	if _, exists := m.snippets[id]; !exists {
 		return fmt.Errorf("snippet with ID %s not found", id)
 	}
 
@@ -128,7 +125,7 @@ func (m *Manager) Delete(id string) error {
 			continue
 		}
 
-		fileSnippet, err := parser.ParseFrontmatter(content)
+		fileSnippet, err := ParseFrontmatter(content)
 		if err != nil {
 			continue
 		}

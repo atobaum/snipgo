@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	"snip-go/internal/core"
-	"snip-go/internal/parser"
 
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
@@ -232,8 +231,8 @@ func serializeSnippetForEdit(snippet *core.Snippet) ([]byte, error) {
 
 // parseSnippetFromEdit parses a markdown file edited by the user
 func parseSnippetFromEdit(content []byte) (*core.Snippet, error) {
-	// Use the parser package to parse frontmatter
-	parsedSnippet, err := parser.ParseFrontmatter(content)
+	// Use the core package to parse frontmatter
+	parsedSnippet, err := core.ParseFrontmatter(content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
 	}
