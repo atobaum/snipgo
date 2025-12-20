@@ -20,17 +20,38 @@ Local-First Snippet Manager built with Go, Wails v2, and React.
 
 ### Build
 
+#### Using Make (Recommended)
+
+```bash
+# Install dependencies
+make install-deps
+
+# Build CLI only
+make build-cli
+
+# Build GUI (requires wails CLI)
+make build-gui
+
+# Build both
+make build
+```
+
+#### Manual Build
+
 ```bash
 # Install dependencies
 go mod download
 cd frontend && pnpm install && cd ..
 
-# Build frontend
-cd frontend && pnpm run build && cd ..
+# Build CLI
+go build -o bin/snipgo ./cmd/snipgo
 
-# Build application
+# Build GUI (requires wails CLI)
+cd frontend && pnpm run build && cd ..
 wails build
 ```
+
+**Note**: GUI application must be built using `wails build`, not `go build`. The `wails` CLI handles build tags and asset embedding automatically.
 
 ## Configuration
 
