@@ -26,7 +26,6 @@ frontend/dist/
 frontend/.vite/
 frontend/.pnpm-store/
 .pnpm-store/
-pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
