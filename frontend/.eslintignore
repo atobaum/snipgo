@@ -1,0 +1,7 @@
+node_modules/
+dist/
+wailsjs/
+*.d.ts
+vite.config.ts
+tsconfig*.json
+

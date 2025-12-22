@@ -1,0 +1,165 @@
+# SnipGo 프로젝트 컨벤션
+
+## 커밋 규칙
+
+### 작업 단위별 커밋
+- **작업 중간에 작업 단위로 커밋하기**: 논리적으로 완결된 기능이나 수정사항이 완료되면 즉시 커밋
+- 각 커밋은 하나의 명확한 목적을 가져야 함
+- 커밋 메시지는 간결하고 명확하게 작성
+
+### 커밋 메시지 형식
+```
+<type>: <subject>
+
+<body> (optional)
+```
+
+**Type 예시:**
+- `feat`: 새로운 기능 추가
+- `fix`: 버그 수정
+- `refactor`: 코드 리팩토링
+- `docs`: 문서 수정
+- `style`: 코드 포맷팅, 세미콜론 누락 등
+- `test`: 테스트 코드 추가/수정
+- `chore`: 빌드 업무 수정, 패키지 매니저 설정 등
+
+**예시:**
+```
+feat: add fuzzy search for snippet titles
+fix: resolve frontmatter parsing error with special characters
+refactor: extract file watcher logic to separate module
+```
+
+## 코드 스타일
+
+### Go
+- `gofmt` 또는 `goimports` 사용하여 포맷팅
+- 에러 처리는 명시적으로 (early return 선호)
+- 패키지명은 소문자, 단일 단어
+- Public 함수/타입은 대문자로 시작, 주석 필수
+- 파일명은 소문자, 단어는 언더스코어로 구분 (예: `snippet.go`, `file_watcher.go`)
+
+### TypeScript/React
+- 함수형 컴포넌트 사용
+- TypeScript strict mode 준수
+- 컴포넌트명은 PascalCase
+- 파일명은 컴포넌트명과 일치 (예: `SnippetList.tsx`)
+- Props는 interface로 정의
+- `const` 선호, 필요시에만 `let` 사용
+
+### 파일 구조
+- Backend: `internal/` 디렉토리 내에서 도메인별로 구조화
+- Frontend: `src/components/` 내에서 기능별로 구성
+- 공통 유틸리티는 적절한 위치에 분리
+
+## 네이밍 규칙
+
+### Go
+- 변수/함수: `camelCase`
+- 타입/인터페이스: `PascalCase`
+- 상수: `PascalCase` 또는 `camelCase` (컨텍스트에 따라)
+- Private: 소문자로 시작
+- Public: 대문자로 시작
+
+### TypeScript
+- 변수/함수: `camelCase`
+- 컴포넌트/타입: `PascalCase`
+- 상수: `UPPER_SNAKE_CASE`
+- 파일명: `kebab-case` 또는 `PascalCase` (컴포넌트인 경우)
+
+## 개발 워크플로우
+
+1. **작업 시작 전**: 현재 브랜치 확인 및 최신 코드 pull
+2. **작업 중**: 논리적 단위가 완료되면 즉시 커밋
+3. **작업 완료 후**: 테스트 실행 및 lint 확인
+4. **PR 전**: 모든 변경사항이 커밋되었는지 확인
+
+## 테스트 코드 작성 규칙
+
+### Go 테스트
+- **파일명**: `*_test.go` 형식 (예: `snippet_test.go`, `manager_test.go`)
+- **테스트 함수명**: `TestXxx` 형식 (Xxx는 대문자로 시작)
+- **벤치마크**: `BenchmarkXxx` 형식
+- **테이블 기반 테스트 선호**: 여러 케이스를 한 함수에서 테스트
+- **테스트 헬퍼**: `testHelper` 같은 헬퍼 함수 활용
+- **Mock**: 외부 의존성은 인터페이스로 추상화하고 Mock 구현
+- **테스트 위치**: 테스트 대상 파일과 같은 패키지에 위치
+- **테스트 커버리지**: 최소 70% 이상 유지 목표
+
+**예시:**
+```go
+func TestParseFrontmatter(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    *Snippet
+        wantErr bool
+    }{
+        {
+            name:  "valid frontmatter",
+            input: "---\nid: test\n---\nbody",
+            want:  &Snippet{ID: "test"},
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := parser.ParseFrontmatter(tt.input)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("ParseFrontmatter() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+            // assertions...
+        })
+    }
+}
+```
+
+### TypeScript/React 테스트
+- **테스트 프레임워크**: Vitest (Vite 프로젝트이므로)
+- **테스트 라이브러리**: React Testing Library
+- **파일명**: `*.test.ts` 또는 `*.test.tsx` (예: `SnippetList.test.tsx`)
+- **테스트 위치**: 테스트 대상 파일과 같은 디렉토리 또는 `__tests__/` 디렉토리
+- **테스트 구조**: Arrange-Act-Assert 패턴
+- **컴포넌트 테스트**: 사용자 관점에서 테스트 (DOM 쿼리, 이벤트 시뮬레이션)
+- **Mock**: `vi.mock()` 사용하여 외부 의존성 모킹
+
+**예시:**
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { SnippetList } from './SnippetList';
+
+describe('SnippetList', () => {
+  it('should render list of snippets', () => {
+    const snippets = [
+      { id: '1', title: 'Test Snippet' },
+    ];
+    
+    render(<SnippetList snippets={snippets} />);
+    
+    expect(screen.getByText('Test Snippet')).toBeInTheDocument();
+  });
+});
+```
+
+### 테스트 실행
+- **Go**: `go test ./...` 또는 `go test -v -cover ./...`
+- **Frontend**: `pnpm test` 또는 `pnpm test:watch`
+- **전체 테스트**: CI/CD 파이프라인에서 자동 실행
+
+### 테스트 작성 원칙
+1. **TDD 권장**: 기능 구현 전에 테스트 작성
+2. **독립성**: 각 테스트는 독립적으로 실행 가능해야 함
+3. **명확성**: 테스트 이름은 무엇을 테스트하는지 명확히 표현
+4. **빠른 실행**: 테스트는 빠르게 실행되어야 함
+5. **실제 사용 시나리오**: 실제 사용 패턴을 반영한 테스트 작성
+
+## 주의사항
+
+- 절대 `.snipgo/` 디렉토리 내 파일을 커밋하지 않음 (사용자 데이터)
+- 환경 변수나 시크릿은 절대 커밋하지 않음
+- 큰 파일 변경은 여러 커밋으로 분리
+- 테스트 실패 시 커밋하지 않음
+- 테스트 코드도 코드 리뷰 대상에 포함
+
