@@ -58,5 +58,3 @@ type ErrInvalidSnippet struct {
 func (e ErrInvalidSnippet) Error() string {
 	return "invalid snippet: " + e.Field + ": " + e.Reason
 }
-
-

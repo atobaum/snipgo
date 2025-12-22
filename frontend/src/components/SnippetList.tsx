@@ -1,22 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Snippet } from '../types';
-import { app } from '../bridge';
+import { useEffect, useState, useCallback } from "react";
+import { Snippet } from "../types";
+import { app } from "../bridge";
 
 interface SnippetListProps {
   onSelect: (snippet: Snippet) => void;
   searchQuery?: string;
 }
 
-export function SnippetList({ onSelect, searchQuery = '' }: SnippetListProps) {
+export function SnippetList({ onSelect, searchQuery = "" }: SnippetListProps) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSnippets();
-  }, [searchQuery]);
-
-  const loadSnippets = async () => {
+  const loadSnippets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -28,11 +24,15 @@ export function SnippetList({ onSelect, searchQuery = '' }: SnippetListProps) {
       }
       setSnippets(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load snippets');
+      setError(err instanceof Error ? err.message : "Failed to load snippets");
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    loadSnippets();
+  }, [loadSnippets]);
 
   if (loading) {
     return (
@@ -93,14 +93,10 @@ export function SnippetList({ onSelect, searchQuery = '' }: SnippetListProps) {
                 </span>
               )}
             </div>
-            {snippet.is_favorite && (
-              <span className="text-yellow-500">★</span>
-            )}
+            {snippet.is_favorite && <span className="text-yellow-500">★</span>}
           </div>
         </div>
       ))}
     </div>
   );
 }
-
-

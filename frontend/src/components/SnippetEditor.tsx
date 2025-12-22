@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import CodeMirror from '@uiw/react-codemirror';
-import { javascript } from '@codemirror/lang-javascript';
-import { python } from '@codemirror/lang-python';
-import { yaml } from '@codemirror/lang-yaml';
-import { json } from '@codemirror/lang-json';
-import { markdown } from '@codemirror/lang-markdown';
-import { Snippet } from '../types';
-import { app } from '../bridge';
+import { useState, useEffect } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
+import { yaml } from "@codemirror/lang-yaml";
+import { json } from "@codemirror/lang-json";
+import { markdown } from "@codemirror/lang-markdown";
+import type { Extension } from "@codemirror/state";
+import { Snippet } from "../types";
+import { app } from "../bridge";
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
@@ -14,7 +15,7 @@ interface SnippetEditorProps {
   onDelete: () => void;
 }
 
-const languageExtensions: Record<string, any> = {
+const languageExtensions: Record<string, Extension> = {
   javascript: javascript(),
   typescript: javascript({ jsx: true }),
   python: python(),
@@ -23,15 +24,19 @@ const languageExtensions: Record<string, any> = {
   markdown: markdown(),
 };
 
-export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps) {
-  const [title, setTitle] = useState('');
+export function SnippetEditor({
+  snippet,
+  onSave,
+  onDelete,
+}: SnippetEditorProps) {
+  const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const [language, setLanguage] = useState('');
+  const [tagInput, setTagInput] = useState("");
+  const [language, setLanguage] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState("");
   const [rawMode, setRawMode] = useState(false);
-  const [rawContent, setRawContent] = useState('');
+  const [rawContent, setRawContent] = useState("");
 
   useEffect(() => {
     if (snippet) {
@@ -41,11 +46,11 @@ export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps)
       setIsFavorite(snippet.is_favorite);
       setBody(snippet.body);
     } else {
-      setTitle('');
+      setTitle("");
       setTags([]);
-      setLanguage('');
+      setLanguage("");
       setIsFavorite(false);
-      setBody('');
+      setBody("");
     }
   }, [snippet]);
 
@@ -53,7 +58,7 @@ export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps)
     const trimmed = tagInput.trim();
     if (trimmed && !tags.includes(trimmed)) {
       setTags([...tags, trimmed]);
-      setTagInput('');
+      setTagInput("");
     }
   };
 
@@ -77,14 +82,17 @@ export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps)
       await app.ReloadSnippets();
       onSave();
     } catch (err) {
-      alert('Failed to save snippet: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert(
+        "Failed to save snippet: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     }
   };
 
   const handleDelete = async () => {
     if (!snippet) return;
 
-    if (!confirm('Are you sure you want to delete this snippet?')) {
+    if (!confirm("Are you sure you want to delete this snippet?")) {
       return;
     }
 
@@ -93,16 +101,22 @@ export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps)
       await app.ReloadSnippets();
       onDelete();
     } catch (err) {
-      alert('Failed to delete snippet: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert(
+        "Failed to delete snippet: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     }
   };
 
   const handleCopyToClipboard = async () => {
     try {
       await app.CopyToClipboard(body);
-      alert('Copied to clipboard!');
+      alert("Copied to clipboard!");
     } catch (err) {
-      alert('Failed to copy to clipboard: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert(
+        "Failed to copy to clipboard: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     }
   };
 
@@ -110,13 +124,13 @@ export function SnippetEditor({ snippet, onSave, onDelete }: SnippetEditorProps)
     if (!rawMode) {
       // Enter raw mode - serialize current snippet
       const frontmatter = `---
-id: "${snippet?.id || ''}"
+id: "${snippet?.id || ""}"
 title: "${title}"
-tags: [${tags.map((t) => `"${t}"`).join(', ')}]
+tags: [${tags.map((t) => `"${t}"`).join(", ")}]
 language: "${language}"
 is_favorite: ${isFavorite}
-created_at: "${snippet?.created_at || ''}"
-updated_at: "${snippet?.updated_at || ''}"
+created_at: "${snippet?.created_at || ""}"
+updated_at: "${snippet?.updated_at || ""}"
 ---
 
 ${body}`;
@@ -124,7 +138,9 @@ ${body}`;
     } else {
       // Exit raw mode - parse raw content (simplified, would need proper parsing)
       // For now, just show a warning
-      alert('Raw mode editing is read-only in this version. Please use the form fields.');
+      alert(
+        "Raw mode editing is read-only in this version. Please use the form fields."
+      );
     }
     setRawMode(!rawMode);
   };
@@ -137,7 +153,9 @@ ${body}`;
     );
   }
 
-  const languageExtension = language ? languageExtensions[language.toLowerCase()] : undefined;
+  const languageExtension = language
+    ? languageExtensions[language.toLowerCase()]
+    : undefined;
 
   return (
     <div className="flex flex-col h-full">
@@ -155,16 +173,18 @@ ${body}`;
             <button
               onClick={() => setIsFavorite(!isFavorite)}
               className={`px-3 py-1 rounded ${
-                isFavorite ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-600'
+                isFavorite
+                  ? "bg-yellow-100 text-yellow-600"
+                  : "bg-gray-100 text-gray-600"
               }`}
             >
-              {isFavorite ? '★ Favorite' : '☆ Favorite'}
+              {isFavorite ? "★ Favorite" : "☆ Favorite"}
             </button>
             <button
               onClick={handleToggleRawMode}
               className="px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
             >
-              {rawMode ? 'Form Mode' : 'Raw Mode'}
+              {rawMode ? "Form Mode" : "Raw Mode"}
             </button>
           </div>
         </div>
@@ -191,7 +211,7 @@ ${body}`;
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   e.preventDefault();
                   handleAddTag();
                 }
@@ -215,10 +235,14 @@ ${body}`;
             />
           </div>
           <div>
-            <span className="text-gray-500">Created: {new Date(snippet.created_at).toLocaleDateString()}</span>
+            <span className="text-gray-500">
+              Created: {new Date(snippet.created_at).toLocaleDateString()}
+            </span>
           </div>
           <div>
-            <span className="text-gray-500">Updated: {new Date(snippet.updated_at).toLocaleDateString()}</span>
+            <span className="text-gray-500">
+              Updated: {new Date(snippet.updated_at).toLocaleDateString()}
+            </span>
           </div>
         </div>
 
@@ -273,5 +297,3 @@ ${body}`;
     </div>
   );
 }
-
-

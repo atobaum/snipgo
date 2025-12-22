@@ -84,7 +84,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 	snippet.UpdateTimestamp()
 
 	// Serialize to markdown
-		content, err := SerializeFrontmatter(snippet)
+	content, err := SerializeFrontmatter(snippet)
 	if err != nil {
 		return fmt.Errorf("failed to serialize snippet: %w", err)
 	}
@@ -207,4 +207,3 @@ func copySnippet(s *Snippet) *Snippet {
 		Body:       s.Body,
 	}
 }
-

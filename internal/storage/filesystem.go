@@ -87,4 +87,3 @@ func (fs *FileSystem) FileExists(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return err == nil
 }
-

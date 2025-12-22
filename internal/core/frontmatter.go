@@ -77,5 +77,3 @@ func SerializeFrontmatter(snippet *Snippet) ([]byte, error) {
 	result := strings.Join(parts, "\n")
 	return []byte(result), nil
 }
-
-
