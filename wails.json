@@ -12,6 +12,6 @@
     "dir": "./frontend",
     "install": "pnpm install"
   },
-  "name": "snip-go",
+  "name": "snipgo",
   "outputfilename": "snipgo"
 }

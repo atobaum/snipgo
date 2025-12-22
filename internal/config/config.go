@@ -37,7 +37,7 @@ func LoadConfig() (*Config, error) {
 		return config, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	configPath := filepath.Join(homeDir, ".config", "snip-go", "config.yaml")
+	configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		// Config file doesn't exist, use default
 		return config, nil
@@ -88,7 +88,7 @@ func GetConfigPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".config", "snip-go", "config.yaml"), nil
+	return filepath.Join(homeDir, ".config", "snipgo", "config.yaml"), nil
 }
 
 // SaveConfig saves the configuration to the config file

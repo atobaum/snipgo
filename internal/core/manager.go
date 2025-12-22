@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"snip-go/internal/storage"
+	"snipgo/internal/storage"
 )
 
 // Manager manages snippets in memory and on disk

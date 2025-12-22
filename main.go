@@ -3,7 +3,7 @@ package main
 import (
 	"embed"
 
-	"snip-go/app"
+	"snipgo/app"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

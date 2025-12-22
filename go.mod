@@ -1,4 +1,4 @@
-module snip-go
+module snipgo
 
 go 1.25.5
 

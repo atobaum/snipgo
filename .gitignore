@@ -4,8 +4,7 @@
 *.dll
 *.so
 *.dylib
-snipgo
-snip-go
+/snipgo
 
 # Test binary
 *.test
@@ -27,8 +26,6 @@ frontend/.vite/
 frontend/.pnpm-store/
 frontend/wailsjs/
 .pnpm-store/
-package-lock.json
-yarn.lock
 
 # IDE
 .idea/
@@ -44,4 +41,4 @@ Thumbs.db
 # Build artifacts
 build/
 dist/
-
+bin

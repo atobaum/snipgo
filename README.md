@@ -62,7 +62,7 @@ SnipGo supports configuration through environment variables and config file:
    export SNIPGO_DATA_DIR="/path/to/your/snippets"
    ```
 
-2. **Config File** (`~/.config/snip-go/config.yaml`):
+2. **Config File** (`~/.config/snipgo/config.yaml`):
    ```yaml
    data_directory: ~/my-snippets
    ```
@@ -104,7 +104,7 @@ Run the GUI application:
 ```bash
 wails dev  # Development mode
 # or
-./bin/snip-go  # Built application
+./bin/snipgo  # Built application
 ```
 
 ## Data Format
@@ -131,7 +131,7 @@ services:
 ## Project Structure
 
 ```
-snip-go/
+snipgo/
 ├── cmd/snipgo/       # CLI entry point
 ├── internal/
 │   ├── core/        # Business logic (includes frontmatter parsing)

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"snip-go/internal/config"
+	"snipgo/internal/config"
 )
 
 // FileSystem handles file system operations for snippets

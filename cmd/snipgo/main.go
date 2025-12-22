@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"snip-go/internal/core"
+	"snipgo/internal/core"
 
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
@@ -239,4 +239,3 @@ func parseSnippetFromEdit(content []byte) (*core.Snippet, error) {
 
 	return parsedSnippet, nil
 }
-

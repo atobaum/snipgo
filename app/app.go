@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"snip-go/internal/core"
+	"snipgo/internal/core"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -79,5 +79,3 @@ func (a *App) CopyToClipboard(text string) error {
 func (a *App) ReloadSnippets() error {
 	return a.manager.LoadAll()
 }
-
-
