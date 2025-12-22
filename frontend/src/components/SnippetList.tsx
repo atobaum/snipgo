@@ -103,3 +103,4 @@ export function SnippetList({ onSelect, searchQuery = '' }: SnippetListProps) {
   );
 }
 
+

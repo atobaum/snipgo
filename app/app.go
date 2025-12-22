@@ -80,3 +80,4 @@ func (a *App) ReloadSnippets() error {
 	return a.manager.LoadAll()
 }
 
+

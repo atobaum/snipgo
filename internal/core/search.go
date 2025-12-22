@@ -95,3 +95,4 @@ func (m *Manager) Search(query string) []*SearchResult {
 	return results
 }
 
+
