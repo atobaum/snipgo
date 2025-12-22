@@ -1,18 +1,17 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "snip-go",
-  "outputfilename": "snip-go",
+  "author": {
+    "email": "",
+    "name": ""
+  },
   "frontend": {
-    "dir": "./frontend",
-    "install": "pnpm install",
+    "bridge": "src/bridge.ts",
     "build": "pnpm run build",
     "dev": "pnpm run dev",
-    "bridge": "src/bridge.ts",
-    "devServer": "http://localhost:5173"
+    "devServer": "http://localhost:5173",
+    "dir": "./frontend",
+    "install": "pnpm install"
   },
-  "author": {
-    "name": "",
-    "email": ""
-  }
+  "name": "snip-go",
+  "outputfilename": "snipgo"
 }
-
