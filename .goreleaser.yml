@@ -48,21 +48,21 @@ archives:
       - LICENSE*
       - README*
 
-homebrew:
-  name: snipgo
-  tap:
-    owner: atobaum
-    name: homebrew-tap
-    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-  homepage: "https://github.com/atobaum/snip-go"
-  description: "Local-First Snippet Manager"
-  license: "MIT"
-  dependencies:
-    - fzf
-  test: |
-    system "#{bin}/snipgo", "--version"
-  install: |
-    bin.install "snipgo"
+brews:
+  - name: snipgo
+    repository:
+      owner: atobaum
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/atobaum/snip-go"
+    description: "Local-First Snippet Manager"
+    license: "MIT"
+    dependencies:
+      - fzf
+    install: |
+      bin.install "snipgo"
+    test: |
+      system "#{bin}/snipgo", "--version"
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
