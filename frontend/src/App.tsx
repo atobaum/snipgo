@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Snippet } from './types';
 import { SnippetList } from './components/SnippetList';
 import { SnippetEditor } from './components/SnippetEditor';
+import { app } from './bridge';
 
 function App() {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
@@ -12,14 +13,21 @@ function App() {
     isDirtyRef.current = dirty;
   }, []);
 
-  const handleSelectSnippet = (snippet: Snippet) => {
+  const handleSelectSnippet = async (snippet: Snippet) => {
     if (isDirtyRef.current) {
       const result = confirm('저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?');
       if (!result) {
         return; // 사용자가 취소함
       }
     }
-    setSelectedSnippet(snippet);
+    // 파일에서 최신 데이터 읽어오기
+    try {
+      const freshSnippet = await app.GetSnippet(snippet.id);
+      setSelectedSnippet(freshSnippet);
+    } catch (err) {
+      console.error('Failed to load snippet:', err);
+      setSelectedSnippet(snippet); // fallback
+    }
   };
 
   const handleSave = (updatedSnippet: Snippet) => {
