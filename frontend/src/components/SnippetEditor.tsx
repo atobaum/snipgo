@@ -14,6 +14,7 @@ interface SnippetEditorProps {
   onSave: (updatedSnippet: Snippet) => void;
   onDelete: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  onListRefresh?: () => void;
 }
 
 const languageExtensions: Record<string, Extension> = {
@@ -30,6 +31,7 @@ export function SnippetEditor({
   onSave,
   onDelete,
   onDirtyChange,
+  onListRefresh,
 }: SnippetEditorProps) {
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -85,6 +87,7 @@ export function SnippetEditor({
         };
         await app.SaveSnippet(updatedSnippet);
         await app.ReloadSnippets();
+        onListRefresh?.(); // 목록 갱신
       } catch (err) {
         alert(
           "Failed to save: " +
@@ -92,7 +95,7 @@ export function SnippetEditor({
         );
       }
     },
-    [snippet]
+    [snippet, onListRefresh]
   );
 
   const handleAddTag = () => {

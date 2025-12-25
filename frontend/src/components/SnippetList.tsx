@@ -6,9 +6,10 @@ interface SnippetListProps {
   onSelect: (snippet: Snippet) => void;
   searchQuery?: string;
   selectedId?: string;
+  refreshKey?: number; // 저장 후 목록 갱신 트리거
 }
 
-export function SnippetList({ onSelect, searchQuery = "", selectedId }: SnippetListProps) {
+export function SnippetList({ onSelect, searchQuery = "", selectedId, refreshKey = 0 }: SnippetListProps) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function SnippetList({ onSelect, searchQuery = "", selectedId }: SnippetL
 
   useEffect(() => {
     loadSnippets();
-  }, [loadSnippets]);
+  }, [loadSnippets, refreshKey]);
 
   if (loading) {
     return (

@@ -7,6 +7,7 @@ import { app } from './bridge';
 function App() {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listRefreshKey, setListRefreshKey] = useState(0);
   const isDirtyRef = useRef(false);
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
@@ -33,10 +34,16 @@ function App() {
   const handleSave = (updatedSnippet: Snippet) => {
     // 저장 후 선택 유지 (업데이트된 snippet으로 갱신)
     setSelectedSnippet(updatedSnippet);
+    setListRefreshKey((k) => k + 1); // 목록 갱신
   };
+
+  const handleListRefresh = useCallback(() => {
+    setListRefreshKey((k) => k + 1);
+  }, []);
 
   const handleDelete = () => {
     setSelectedSnippet(null);
+    setListRefreshKey((k) => k + 1); // 목록 갱신
   };
 
   return (
@@ -65,6 +72,7 @@ function App() {
             onSelect={handleSelectSnippet}
             searchQuery={searchQuery}
             selectedId={selectedSnippet?.id}
+            refreshKey={listRefreshKey}
           />
         </aside>
 
@@ -75,6 +83,7 @@ function App() {
             onSave={handleSave}
             onDelete={handleDelete}
             onDirtyChange={handleDirtyChange}
+            onListRefresh={handleListRefresh}
           />
         </main>
       </div>
