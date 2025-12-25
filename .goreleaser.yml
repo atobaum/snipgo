@@ -5,7 +5,7 @@ project_name: snipgo
 release:
   github:
     owner: atobaum
-    name: snip-go
+    name: snipgo
   name_template: "{{.Tag}}"
   mode: replace
   header: |
@@ -54,7 +54,7 @@ brews:
       owner: atobaum
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: "https://github.com/atobaum/snip-go"
+    homepage: "https://github.com/atobaum/snipgo"
     description: "Local-First Snippet Manager"
     license: "MIT"
     dependencies:
