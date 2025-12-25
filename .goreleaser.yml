@@ -1,0 +1,75 @@
+project_name: snipgo
+
+release:
+  github:
+    owner: atobaum
+    name: snip-go
+  name_template: "{{.Tag}}"
+  mode: replace
+  header: |
+    ## SnipGo {{ .Tag }}
+
+    Local-First Snippet Manager built with Go, Wails v2, and React.
+
+    ### Installation
+
+    #### Homebrew
+    ```bash
+    brew tap atobaum/tap
+    brew install snipgo
+    ```
+
+    #### Manual
+    Download the binary for your platform from the assets below.
+
+builds:
+  - id: snipgo
+    main: ./cmd/snipgo
+    binary: snipgo
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    files:
+      - LICENSE*
+      - README*
+
+homebrew:
+  name: snipgo
+  tap:
+    owner: atobaum
+    name: homebrew-tap
+    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+  homepage: "https://github.com/atobaum/snip-go"
+  description: "Local-First Snippet Manager"
+  license: "MIT"
+  dependencies:
+    - fzf
+  test: |
+    system "#{bin}/snipgo", "--version"
+  install: |
+    bin.install "snipgo"
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - Merge pull request
+      - Merge branch

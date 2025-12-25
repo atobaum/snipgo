@@ -12,6 +12,13 @@ Local-First Snippet Manager built with Go, Wails v2, and React.
 
 ## Installation
 
+### Homebrew (Recommended)
+
+```bash
+brew tap atobaum/tap
+brew install snipgo
+```
+
 ### Prerequisites
 
 - Go 1.21+
