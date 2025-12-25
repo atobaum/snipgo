@@ -9,6 +9,8 @@ Local-First Snippet Manager built with Go, Wails v2, and React.
 - **CLI + GUI**: Use both terminal and desktop interface
 - **Fuzzy Search**: Fast in-memory search with fuzzy matching
 - **CodeMirror Editor**: Syntax highlighting for various languages
+- **Smart Save**: Unsaved changes indicator with confirmation dialog
+- **Auto-save**: Tags and favorites are saved immediately
 
 ## Installation
 
@@ -119,6 +121,13 @@ wails dev  # Development mode
 # or
 ./bin/snipgo  # Built application
 ```
+
+**GUI Features:**
+- Edit snippet title, body, language with CodeMirror syntax highlighting
+- "수정됨" (Modified) indicator when there are unsaved changes
+- Confirmation dialog when switching snippets with unsaved changes
+- Tags and favorites are auto-saved immediately when changed
+- Selected snippet is highlighted in the list
 
 ## Data Format
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Snippet } from './types';
 import { SnippetList } from './components/SnippetList';
 import { SnippetEditor } from './components/SnippetEditor';
@@ -6,14 +6,25 @@ import { SnippetEditor } from './components/SnippetEditor';
 function App() {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const isDirtyRef = useRef(false);
+
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+  }, []);
 
   const handleSelectSnippet = (snippet: Snippet) => {
+    if (isDirtyRef.current) {
+      const result = confirm('저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?');
+      if (!result) {
+        return; // 사용자가 취소함
+      }
+    }
     setSelectedSnippet(snippet);
   };
 
-  const handleSave = () => {
-    // Reload will be handled by components
-    setSelectedSnippet(null);
+  const handleSave = (updatedSnippet: Snippet) => {
+    // 저장 후 선택 유지 (업데이트된 snippet으로 갱신)
+    setSelectedSnippet(updatedSnippet);
   };
 
   const handleDelete = () => {
@@ -42,7 +53,11 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Snippet List */}
         <aside className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-          <SnippetList onSelect={handleSelectSnippet} searchQuery={searchQuery} />
+          <SnippetList
+            onSelect={handleSelectSnippet}
+            searchQuery={searchQuery}
+            selectedId={selectedSnippet?.id}
+          />
         </aside>
 
         {/* Main - Editor */}
@@ -51,6 +66,7 @@ function App() {
             snippet={selectedSnippet}
             onSave={handleSave}
             onDelete={handleDelete}
+            onDirtyChange={handleDirtyChange}
           />
         </main>
       </div>

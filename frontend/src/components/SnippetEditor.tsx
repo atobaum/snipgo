@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
@@ -11,8 +11,9 @@ import { app } from "../bridge";
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
-  onSave: () => void;
+  onSave: (updatedSnippet: Snippet) => void;
   onDelete: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const languageExtensions: Record<string, Extension> = {
@@ -28,6 +29,7 @@ export function SnippetEditor({
   snippet,
   onSave,
   onDelete,
+  onDirtyChange,
 }: SnippetEditorProps) {
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -38,32 +40,81 @@ export function SnippetEditor({
   const [rawMode, setRawMode] = useState(false);
   const [rawContent, setRawContent] = useState("");
 
+  // isDirty 계산 (title, body, language만 - tag/favorite는 즉시 저장됨)
+  const isDirty = useMemo(() => {
+    if (!snippet) return false;
+    return (
+      title !== snippet.title ||
+      body !== snippet.body ||
+      language !== snippet.language
+    );
+  }, [snippet, title, body, language]);
+
+  // isDirty 변경 시 부모에게 알림
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   useEffect(() => {
     if (snippet) {
       setTitle(snippet.title);
       setTags([...snippet.tags]);
+      setTagInput(""); // tagInput 초기화
       setLanguage(snippet.language);
       setIsFavorite(snippet.is_favorite);
       setBody(snippet.body);
     } else {
       setTitle("");
       setTags([]);
+      setTagInput("");
       setLanguage("");
       setIsFavorite(false);
       setBody("");
     }
   }, [snippet]);
 
+  // tag/favorite 즉시 저장 헬퍼
+  const saveTagsAndFavorite = useCallback(
+    async (newTags: string[], newFavorite: boolean) => {
+      if (!snippet) return;
+      try {
+        const updatedSnippet: Snippet = {
+          ...snippet,
+          tags: newTags,
+          is_favorite: newFavorite,
+        };
+        await app.SaveSnippet(updatedSnippet);
+        await app.ReloadSnippets();
+      } catch (err) {
+        alert(
+          "Failed to save: " +
+            (err instanceof Error ? err.message : "Unknown error")
+        );
+      }
+    },
+    [snippet]
+  );
+
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
     if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed]);
+      const newTags = [...tags, trimmed];
+      setTags(newTags);
       setTagInput("");
+      saveTagsAndFavorite(newTags, isFavorite); // 즉시 저장
     }
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
+    const newTags = tags.filter((tag) => tag !== tagToRemove);
+    setTags(newTags);
+    saveTagsAndFavorite(newTags, isFavorite); // 즉시 저장
+  };
+
+  const handleToggleFavorite = () => {
+    const newFavorite = !isFavorite;
+    setIsFavorite(newFavorite);
+    saveTagsAndFavorite(tags, newFavorite); // 즉시 저장
   };
 
   const handleSave = async () => {
@@ -80,7 +131,7 @@ export function SnippetEditor({
       };
       await app.SaveSnippet(updatedSnippet);
       await app.ReloadSnippets();
-      onSave();
+      onSave(updatedSnippet);
     } catch (err) {
       alert(
         "Failed to save snippet: " +
@@ -162,16 +213,23 @@ ${body}`;
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between mb-4">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="flex-1 text-xl font-semibold border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-          />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-1 gap-2">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title"
+              className="flex-1 text-xl font-semibold border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+            />
+            {isDirty && (
+              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 rounded">
+                수정됨
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-4">
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleToggleFavorite}
               className={`px-3 py-1 rounded ${
                 isFavorite
                   ? "bg-yellow-100 text-yellow-600"
