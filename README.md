@@ -90,12 +90,18 @@ snipgo add
 # List all snippets
 snipgo list
 
-# Search snippets
+# Search snippets interactively with fzf (no args = all snippets)
+snipgo search
 snipgo search "docker"
+
+# Execute a snippet as shell command (interactive selection with fzf)
+snipgo exec
 
 # Copy snippet body to clipboard
 snipgo copy "docker"
 ```
+
+**Note**: `exec` and `search` commands require [fzf](https://github.com/junegunn/fzf) to be installed for interactive selection.
 
 ### GUI
 
@@ -141,6 +147,11 @@ snipgo/
 ├── frontend/         # React frontend
 └── main.go           # Wails entry point
 ```
+
+## Related Projects
+
+- [pet](https://github.com/knqyf263/pet) - Simple command-line snippet manager (inspiration for `exec` and `search` commands)
+- [MassCode](https://github.com/massCodeIO/massCode) - A free and open source code snippets manager for developers
 
 ## License
 
