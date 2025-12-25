@@ -17,10 +17,17 @@ import (
 
 var manager *core.Manager
 
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 var rootCmd = &cobra.Command{
-	Use:   "snipgo",
-	Short: "SnipGo - Local-First Snippet Manager",
-	Long:  "SnipGo is a local-first snippet manager that stores snippets as Markdown files.",
+	Use:     "snipgo",
+	Short:   "SnipGo - Local-First Snippet Manager",
+	Long:    "SnipGo is a local-first snippet manager that stores snippets as Markdown files.",
+	Version: version,
 }
 
 var newCmd = &cobra.Command{
