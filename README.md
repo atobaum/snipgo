@@ -84,8 +84,8 @@ snipgo config set data_directory /path/to/snippets
 ### CLI
 
 ```bash
-# Add a new snippet (opens $EDITOR)
-snipgo add
+# Create a new snippet interactively
+snipgo new
 
 # List all snippets
 snipgo list

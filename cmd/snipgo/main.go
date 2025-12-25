@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
 	"snipgo/internal/core"
 
 	"github.com/atotto/clipboard"
+	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 )
 
@@ -22,11 +23,12 @@ var rootCmd = &cobra.Command{
 	Long:  "SnipGo is a local-first snippet manager that stores snippets as Markdown files.",
 }
 
-var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add a new snippet",
-	Long:  "Opens $EDITOR to create a new snippet with basic frontmatter",
-	RunE:  runAdd,
+var newCmd = &cobra.Command{
+	Use:   "new",
+	Short: "Create a new snippet",
+	Long:  "Interactively create a new snippet by entering description and command",
+	Args:  cobra.NoArgs,
+	RunE:  runNew,
 }
 
 var listCmd = &cobra.Command{
@@ -61,7 +63,7 @@ var execCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(newCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(copyCmd)
@@ -87,58 +89,43 @@ func main() {
 	}
 }
 
-func runAdd(cmd *cobra.Command, args []string) error {
-	// Create a new snippet
-	snippet := core.NewSnippet("Untitled")
-
-	// Create a temporary file with frontmatter
-	tmpDir := os.TempDir()
-	tmpFile := filepath.Join(tmpDir, fmt.Sprintf("snipgo_%s.md", snippet.ID))
-
-	// Serialize to markdown
-	content, err := serializeSnippetForEdit(snippet)
+func runNew(cmd *cobra.Command, args []string) error {
+	// Prompt for description (title)
+	description, err := readline.Line("Description> ")
 	if err != nil {
-		return fmt.Errorf("failed to serialize snippet: %w", err)
+		if err == io.EOF {
+			return fmt.Errorf("cancelled")
+		}
+		return fmt.Errorf("failed to read description: %w", err)
+	}
+	description = strings.TrimSpace(description)
+	if description == "" {
+		return fmt.Errorf("description cannot be empty")
 	}
 
-	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer os.Remove(tmpFile)
-
-	// Open editor
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vim" // Default to vim
-	}
-
-	editorCmd := exec.Command(editor, tmpFile)
-	editorCmd.Stdin = os.Stdin
-	editorCmd.Stdout = os.Stdout
-	editorCmd.Stderr = os.Stderr
-
-	if err := editorCmd.Run(); err != nil {
-		return fmt.Errorf("editor exited with error: %w", err)
-	}
-
-	// Read the edited file
-	editedContent, err := os.ReadFile(tmpFile)
+	// Prompt for command (body)
+	command, err := readline.Line("Command> ")
 	if err != nil {
-		return fmt.Errorf("failed to read edited file: %w", err)
+		if err == io.EOF {
+			return fmt.Errorf("cancelled")
+		}
+		return fmt.Errorf("failed to read command: %w", err)
+	}
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return fmt.Errorf("command cannot be empty")
 	}
 
-	// Parse the edited content
-	editedSnippet, err := parseSnippetFromEdit(editedContent)
-	if err != nil {
-		return fmt.Errorf("failed to parse edited snippet: %w", err)
-	}
+	// Create snippet
+	snippet := core.NewSnippet(description)
+	snippet.Body = command
 
 	// Save the snippet
-	if err := manager.Save(editedSnippet); err != nil {
+	if err := manager.Save(snippet); err != nil {
 		return fmt.Errorf("failed to save snippet: %w", err)
 	}
 
-	fmt.Printf("Snippet saved: %s\n", editedSnippet.Title)
+	fmt.Printf("Snippet saved: %s\n", snippet.Title)
 	return nil
 }
 
