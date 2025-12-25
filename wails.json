@@ -4,14 +4,10 @@
     "email": "",
     "name": ""
   },
-  "frontend": {
-    "bridge": "src/bridge.ts",
-    "build": "pnpm run build",
-    "dev": "pnpm run dev",
-    "devServer": "http://localhost:5173",
-    "dir": "./frontend",
-    "install": "pnpm install"
-  },
+  "frontend:build": "pnpm run build",
+  "frontend:dev:serverUrl": "http://localhost:5173",
+  "frontend:dir": "frontend",
+  "frontend:install": "pnpm install",
   "name": "Snipgo",
   "outputfilename": "Snipgo"
 }
