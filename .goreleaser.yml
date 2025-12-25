@@ -15,10 +15,16 @@ release:
 
     ### Installation
 
-    #### Homebrew
+    #### CLI (Homebrew)
     ```bash
     brew tap atobaum/tap
     brew install snipgo
+    ```
+
+    #### GUI App (Homebrew Cask)
+    ```bash
+    brew tap atobaum/tap
+    brew install --cask snipgo-gui
     ```
 
     #### Manual
