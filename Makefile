@@ -8,6 +8,10 @@ build-cli:
 # Build GUI (requires wails)
 build-gui:
 	@echo "Building GUI (requires wails CLI)..."
+	@mkdir -p frontend/dist
+	@touch frontend/dist/.gitkeep
+	@echo "Generating Wails bindings..."
+	@wails generate module
 	@wails build
 
 # Build both

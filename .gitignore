@@ -25,6 +25,7 @@ frontend/dist/
 frontend/.vite/
 frontend/.pnpm-store/
 frontend/wailsjs/
+frontend/package.json.md5
 .pnpm-store/
 
 # IDE
