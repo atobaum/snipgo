@@ -6,6 +6,7 @@
   },
   "frontend:build": "pnpm run build",
   "frontend:dev:serverUrl": "http://localhost:5173",
+  "frontend:dev:watcher": "pnpm run dev",
   "frontend:dir": "frontend",
   "frontend:install": "pnpm install",
   "name": "Snipgo",

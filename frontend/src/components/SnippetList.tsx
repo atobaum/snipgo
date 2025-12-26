@@ -5,9 +5,11 @@ import { app } from "../bridge";
 interface SnippetListProps {
   onSelect: (snippet: Snippet) => void;
   searchQuery?: string;
+  selectedId?: string;
+  refreshKey?: number; // 저장 후 목록 갱신 트리거
 }
 
-export function SnippetList({ onSelect, searchQuery = "" }: SnippetListProps) {
+export function SnippetList({ onSelect, searchQuery = "", selectedId, refreshKey = 0 }: SnippetListProps) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function SnippetList({ onSelect, searchQuery = "" }: SnippetListProps) {
 
   useEffect(() => {
     loadSnippets();
-  }, [loadSnippets]);
+  }, [loadSnippets, refreshKey]);
 
   if (loading) {
     return (
@@ -70,7 +72,11 @@ export function SnippetList({ onSelect, searchQuery = "" }: SnippetListProps) {
         <div
           key={snippet.id}
           onClick={() => onSelect(snippet)}
-          className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+          className={`p-4 cursor-pointer transition-colors ${
+            selectedId === snippet.id
+              ? "bg-blue-50 border-l-4 border-blue-500"
+              : "hover:bg-gray-50"
+          }`}
         >
           <div className="flex items-center justify-between">
             <div className="flex-1">
