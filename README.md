@@ -24,7 +24,7 @@ brew install snipgo
 ### Prerequisites
 
 - Go 1.25+
-- Node.js 18+ and pnpm
+- Node.js 24 LTS and pnpm
 - Wails v2 CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 
 ### Build
