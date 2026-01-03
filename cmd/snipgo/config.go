@@ -29,32 +29,38 @@ var configSetCmd = &cobra.Command{
 	RunE:  runConfigSet,
 }
 
+var configBootstrapCmd = &cobra.Command{
+	Use:   "bootstrap",
+	Short: "Bootstrap the configuration",
+	Long:  "Bootstrap the configuration",
+	Args:  cobra.NoArgs,
+	RunE:  runConfigBootstrap,
+}
+
 func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configBootstrapCmd)
 	rootCmd.AddCommand(configCmd)
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
+	configPath, err := config.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed to get config path: %w", err)
+	}
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	fmt.Println("Current configuration:")
+	fmt.Printf("  Config File: %s\n", configPath)
 	fmt.Printf("  Data Directory: %s\n", cfg.DataDirectory)
 
-	configPath, err := config.GetConfigPath()
-	if err == nil {
-		if _, err := os.Stat(configPath); err == nil {
-			fmt.Printf("  Config File: %s\n", configPath)
-		} else {
-			fmt.Printf("  Config File: (using defaults)\n")
-		}
-	}
-
-	if os.Getenv("SNIPGO_DATA_DIR") != "" {
-		fmt.Printf("  Environment Variable: SNIPGO_DATA_DIR=%s\n", os.Getenv("SNIPGO_DATA_DIR"))
+	if envConfigPath := os.Getenv("SNIPGO_CONFIG_PATH"); envConfigPath != "" {
+		fmt.Printf("  Environment Variable: SNIPGO_CONFIG_PATH=%s\n", envConfigPath)
 	}
 
 	return nil
@@ -81,5 +87,22 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Configuration updated: %s = %s\n", key, value)
+	return nil
+}
+
+func runConfigBootstrap(cmd *cobra.Command, args []string) error {
+	cfg := config.DefaultConfig()
+
+	configPath, err := config.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed to get config path: %w", err)
+	}
+
+	if err := config.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Printf("Configuration bootstrapped: %s\n", configPath)
+	runConfigShow(cmd, args)
 	return nil
 }

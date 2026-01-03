@@ -7,6 +7,28 @@ import (
 	"time"
 )
 
+// setupTestConfig creates a temporary config file and sets SNIPGO_CONFIG_PATH
+// Returns cleanup function and error
+func setupTestConfig(tmpDir string) (func(), error) {
+	originalEnv := os.Getenv("SNIPGO_CONFIG_PATH")
+	
+	// Create temporary config file
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	content := "data_directory: " + tmpDir + "\n"
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		return nil, err
+	}
+	
+	os.Setenv("SNIPGO_CONFIG_PATH", configPath)
+	
+	cleanup := func() {
+		os.Setenv("SNIPGO_CONFIG_PATH", originalEnv)
+		os.Remove(configPath)
+	}
+	
+	return cleanup, nil
+}
+
 func TestNewManager(t *testing.T) {
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
@@ -15,11 +37,12 @@ func TestNewManager(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Set environment variable to use temp dir
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -46,10 +69,12 @@ func TestManager_LoadAll(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -184,10 +209,12 @@ func TestManager_Save(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -299,10 +326,12 @@ func TestManager_Delete(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -394,10 +423,12 @@ func TestManager_GetByID(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -472,10 +503,12 @@ func TestManager_GetAll(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {

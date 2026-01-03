@@ -6,8 +6,9 @@
 *.dylib
 /snipgo
 
-# Test binary
 *.test
+.config/
+.envrc
 
 # Output of the go coverage tool
 coverage.*

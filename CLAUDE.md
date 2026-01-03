@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SnipGo is a local-first snippet manager with dual interfaces (CLI + GUI). All snippets are stored as Markdown files with YAML frontmatter in `~/.snipgo/snippets/`, allowing editing with any text editor.
+SnipGo is a local-first snippet manager with dual interfaces (CLI + GUI). All snippets are stored as Markdown files with YAML frontmatter in `~/.config/snipgo/snippets/`, allowing editing with any text editor.
 
 ## Essential Commands
 
@@ -127,7 +127,7 @@ Snippets stored as Markdown files with YAML frontmatter:
 #### internal/storage/filesystem.go - File Operations
 
 File naming: `{sanitized-title}_{timestamp}.md`
-- All files stored in configured `snippetsDir` (default: `~/.snipgo/snippets/`)
+- All files stored in configured `snippetsDir` (default: `~/.config/snipgo/snippets/`)
 - No subdirectories - flat structure
 - Filename sanitization removes special characters
 
@@ -268,10 +268,13 @@ Exposes Go methods to frontend via Wails IPC:
 
 ## Configuration
 
-**Priority order:**
-1. Environment variable: `SNIPGO_DATA_DIR`
-2. Config file: `~/.config/snipgo/config.yaml`
-3. Default: `~/.snipgo/snippets/`
+**Config file path priority:**
+1. Environment variable: `SNIPGO_CONFIG_PATH`
+2. Default: `~/.config/snipgo/config.yaml`
+
+**Data directory priority:**
+1. Config file: `data_directory` field in config.yaml
+2. Default: `~/.config/snipgo/snippets/`
 
 **Config management:**
 - `internal/config/config.go` handles all config logic
