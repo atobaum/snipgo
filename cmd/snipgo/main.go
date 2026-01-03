@@ -69,12 +69,70 @@ var execCmd = &cobra.Command{
 	RunE:  runExec,
 }
 
+var editCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Edit a snippet",
+	Long:  "Interactively select a snippet using fzf and edit it with $EDITOR",
+	Args:  cobra.NoArgs,
+	RunE:  runEdit,
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number",
+	Long:  "Print the version, commit hash, and build date",
+	Args:  cobra.NoArgs,
+	RunE:  runVersion,
+}
+
+var completionCmd = &cobra.Command{
+	Use:   "completion",
+	Short: "Generate completion script",
+	Long: `Generate shell completion scripts for snipgo.
+
+To load completions in your current shell session:
+  source <(snipgo completion zsh)
+
+To load completions for every new session, execute once:
+  # Linux:
+  snipgo completion zsh > "${fpath[1]}/_snipgo"
+  
+  # macOS:
+  snipgo completion zsh > $(brew --prefix)/share/zsh/site-functions/_snipgo
+`,
+	Args: cobra.NoArgs,
+}
+
+var completionZshCmd = &cobra.Command{
+	Use:   "zsh",
+	Short: "Generate zsh completion script",
+	Long: `Generate the autocompletion script for zsh shell.
+
+To load completions in your current shell session:
+  source <(snipgo completion zsh)
+
+To load completions for every new session, add to your ~/.zshrc:
+  echo 'source <(snipgo completion zsh)' >> ~/.zshrc
+
+Or install to a system-wide location:
+  snipgo completion zsh > ~/.zsh/completions/_snipgo
+  echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
+  echo 'autoload -U compinit && compinit' >> ~/.zshrc
+`,
+	Args: cobra.NoArgs,
+	RunE: runCompletionZsh,
+}
+
 func init() {
 	rootCmd.AddCommand(newCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(copyCmd)
 	rootCmd.AddCommand(execCmd)
+	rootCmd.AddCommand(editCmd)
+	rootCmd.AddCommand(versionCmd)
+	completionCmd.AddCommand(completionZshCmd)
+	rootCmd.AddCommand(completionCmd)
 }
 
 func main() {
@@ -254,20 +312,8 @@ func runCopy(cmd *cobra.Command, args []string) error {
 
 // serializeSnippetForEdit creates a markdown file with frontmatter for editing
 func serializeSnippetForEdit(snippet *core.Snippet) ([]byte, error) {
-	var parts []string
-	parts = append(parts, "---")
-	parts = append(parts, fmt.Sprintf("id: %q", snippet.ID))
-	parts = append(parts, fmt.Sprintf("title: %q", snippet.Title))
-	parts = append(parts, fmt.Sprintf("tags: []"))
-	parts = append(parts, fmt.Sprintf("language: \"\""))
-	parts = append(parts, fmt.Sprintf("is_favorite: %v", snippet.IsFavorite))
-	parts = append(parts, fmt.Sprintf("created_at: %s", snippet.CreatedAt.Format("2006-01-02T15:04:05Z")))
-	parts = append(parts, fmt.Sprintf("updated_at: %s", snippet.UpdatedAt.Format("2006-01-02T15:04:05Z")))
-	parts = append(parts, "---")
-	parts = append(parts, "")
-	parts = append(parts, snippet.Body)
-
-	return []byte(strings.Join(parts, "\n")), nil
+	// Use the core package's SerializeFrontmatter function
+	return core.SerializeFrontmatter(snippet)
 }
 
 // parseSnippetFromEdit parses a markdown file edited by the user
@@ -367,4 +413,117 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 	}
 
 	return selectedSnippet, nil
+}
+
+func runEdit(cmd *cobra.Command, args []string) error {
+	// Get all snippets
+	snippets := manager.GetAll()
+	if len(snippets) == 0 {
+		return fmt.Errorf("no snippets found")
+	}
+
+	// Use fzf to select
+	selected, err := selectSnippetWithFzf(snippets)
+	if err != nil {
+		return err
+	}
+
+	// Get editor from environment variable, default to vi
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+
+	// Create temporary file
+	tmpFile, err := os.CreateTemp("", "snipgo-edit-*.md")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath) // Clean up temp file
+
+	// Serialize snippet to markdown
+	content, err := serializeSnippetForEdit(selected)
+	if err != nil {
+		return fmt.Errorf("failed to serialize snippet: %w", err)
+	}
+
+	// Write to temp file
+	if _, err := tmpFile.Write(content); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write to temporary file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary file: %w", err)
+	}
+
+	// Get file modification time before editing
+	beforeStat, err := os.Stat(tmpPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat temporary file: %w", err)
+	}
+	beforeModTime := beforeStat.ModTime()
+
+	// Open editor
+	editCmd := exec.Command(editor, tmpPath)
+	editCmd.Stdin = os.Stdin
+	editCmd.Stdout = os.Stdout
+	editCmd.Stderr = os.Stderr
+
+	if err := editCmd.Run(); err != nil {
+		return fmt.Errorf("editor exited with error: %w", err)
+	}
+
+	// Check if file was modified
+	afterStat, err := os.Stat(tmpPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat temporary file after editing: %w", err)
+	}
+	afterModTime := afterStat.ModTime()
+
+	// If file wasn't modified, user might have cancelled
+	if beforeModTime.Equal(afterModTime) {
+		return fmt.Errorf("file was not modified, edit cancelled")
+	}
+
+	// Read edited content
+	editedContent, err := os.ReadFile(tmpPath)
+	if err != nil {
+		return fmt.Errorf("failed to read edited file: %w", err)
+	}
+
+	// Parse edited content
+	editedSnippet, err := parseSnippetFromEdit(editedContent)
+	if err != nil {
+		return fmt.Errorf("failed to parse edited content: %w", err)
+	}
+
+	// Validate edited snippet
+	if err := editedSnippet.Validate(); err != nil {
+		return fmt.Errorf("invalid snippet after editing: %w", err)
+	}
+
+	// Ensure ID matches (don't allow changing ID)
+	editedSnippet.ID = selected.ID
+	// Preserve created_at timestamp
+	editedSnippet.CreatedAt = selected.CreatedAt
+
+	// Save the edited snippet
+	if err := manager.Save(editedSnippet); err != nil {
+		return fmt.Errorf("failed to save edited snippet: %w", err)
+	}
+
+	fmt.Printf("Snippet '%s' updated successfully\n", editedSnippet.Title)
+	return nil
+}
+
+func runVersion(cmd *cobra.Command, args []string) error {
+	fmt.Printf("snipgo version %s\n", version)
+	fmt.Printf("commit: %s\n", commit)
+	fmt.Printf("date: %s\n", date)
+	return nil
+}
+
+func runCompletionZsh(cmd *cobra.Command, args []string) error {
+	return rootCmd.GenZshCompletion(os.Stdout)
 }
