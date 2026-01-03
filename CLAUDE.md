@@ -35,8 +35,7 @@ make build
 go test ./...
 go test -v -cover ./...
 
-# Run single Go test
-go test -v -run TestParseFrontmatter ./internal/core
+# NOTE: No Go tests currently exist (see Testing Guidelines section)
 
 # Frontend tests
 cd frontend && pnpm test
@@ -138,6 +137,22 @@ Exposes Go methods to frontend via Wails IPC:
 - `OnStartup(ctx)` captures Wails runtime context for clipboard operations
 - Type conversion happens in frontend bridge layer (frontend/src/bridge.ts)
 
+### Performance Characteristics & Known Limitations
+
+**In-Memory Cache:**
+- All snippets loaded on startup via `LoadAll()`
+- O(1) lookup by ID, ~1KB per snippet memory footprint
+- Negligible impact for <10K snippets
+
+**File Operations:**
+- **Delete is O(n):** Rescans all files to find matching ID (filename contains title, not ID)
+- **Title changes create duplicates:** Renaming generates new file, old file NOT auto-deleted
+- Manual cleanup required for renamed snippets
+
+**Error Recovery:**
+- `LoadAll()` gracefully skips malformed files (prints warning to stdout, continues loading)
+- Corrupted YAML won't crash app but snippet becomes inaccessible
+
 ### Frontend Architecture
 
 #### State Management (App.tsx)
@@ -161,6 +176,12 @@ Exposes Go methods to frontend via Wails IPC:
 - Only title, body, language tracked (not tags/favorites)
 - Prevents accidental data loss
 
+**Data Freshness Strategy:**
+- When user selects snippet: `App.tsx` calls `GetSnippet(id)` to fetch latest file state
+- Ensures external edits (CLI, text editors) are immediately visible
+- TagInput auto-resets on snippet switch to prevent UI confusion
+- Trade-off: Extra IPC call vs guaranteed fresh data
+
 #### Type Bridge (frontend/src/bridge.ts)
 
 - Converts between Go time.Time and JavaScript Date/ISO strings
@@ -179,6 +200,23 @@ Exposes Go methods to frontend via Wails IPC:
 - Entry point calls `wails.Run()`
 - Must be built with `wails build` (not `go build`)
 - Asset embedding handled by Wails CLI
+
+## Dependencies
+
+### Go Backend
+- **github.com/wailsapp/wails/v2** - GUI framework
+- **github.com/spf13/cobra** - CLI command framework
+- **github.com/google/uuid** - Snippet ID generation
+- **github.com/sahilm/fuzzy** - Fuzzy string matching for search
+- **github.com/atotto/clipboard** - CLI clipboard operations
+- **gopkg.in/yaml.v3** - YAML frontmatter parsing
+
+### Frontend
+- **React 18.3.1** - UI framework
+- **@uiw/react-codemirror** - Code editor with syntax highlighting
+- **Tailwind CSS** - Styling (no custom CSS modules)
+- **Vitest + React Testing Library** - Testing
+- **Vite** - Build tool
 
 ## Important Conventions
 
@@ -214,14 +252,16 @@ Exposes Go methods to frontend via Wails IPC:
 ### Testing Guidelines (from .cursorrules)
 
 **Go:**
-- Table-driven tests preferred
-- Test coverage target: 70%+
-- Test files: `*_test.go` (e.g., `snippet_test.go`)
-- Mock external dependencies with interfaces
+- **Current Status: No Go tests exist** (as of Jan 2026)
+- When adding tests, follow these patterns:
+  - Table-driven tests preferred
+  - Test files: `*_test.go` (e.g., `snippet_test.go`)
+  - Mock external dependencies with interfaces
+  - Target coverage: 70%+ (aspirational)
 
-**TypeScript:**
+**Frontend:** ✅ Comprehensive test coverage
 - Vitest + React Testing Library
-- Test files: `*.test.tsx` (e.g., `SnippetList.test.tsx`)
+- Test files: `*.test.tsx` (600+ lines across 3 test files)
 - User-centric testing (query by text, simulate events)
 - Arrange-Act-Assert pattern
 
@@ -287,3 +327,6 @@ Exposes Go methods to frontend via Wails IPC:
 5. **Use bridge.ts functions** for type conversion, not raw Wails bindings
 6. **Don't use `--no-verify` or `--no-gpg-sign`** in git commits unless explicitly requested
 7. **Test files belong in same package** as tested code (not separate `_test` package)
+8. **No Go tests exist yet** - Don't assume test coverage exists when making changes
+9. **Renamed snippets leave orphaned files** - Old files must be manually cleaned up
+10. **Delete operation scans all files** - Avoid calling Delete in tight loops
