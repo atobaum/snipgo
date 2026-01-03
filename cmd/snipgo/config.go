@@ -9,6 +9,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ConfigPathSource indicates where the config path came from
+type ConfigPathSource string
+
+const (
+	ConfigPathSourceEnv     ConfigPathSource = "env"
+	ConfigPathSourceDefault ConfigPathSource = "default"
+)
+
+// GetConfigPath returns the config path and its source
+// Priority: 1. SNIPGO_CONFIG_PATH env var, 2. default path
+func GetConfigPath(cmd *cobra.Command) (string, ConfigPathSource, error) {
+	// 1. Check environment variable
+	if envConfigPath := os.Getenv("SNIPGO_CONFIG_PATH"); envConfigPath != "" {
+		path, err := config.GetConfigPath()
+		if err != nil {
+			return "", "", err
+		}
+		return path, ConfigPathSourceEnv, nil
+	}
+
+	// 2. Use default
+	path, err := config.GetConfigPath()
+	if err != nil {
+		return "", "", err
+	}
+	return path, ConfigPathSourceDefault, nil
+}
+
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage configuration",
@@ -45,7 +73,7 @@ func init() {
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
-	configPath, err := config.GetConfigPath()
+	configPath, _, err := GetConfigPath(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to get config path: %w", err)
 	}
@@ -58,10 +86,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Println("Current configuration:")
 	fmt.Printf("  Config File: %s\n", configPath)
 	fmt.Printf("  Data Directory: %s\n", cfg.DataDirectory)
-
-	if envConfigPath := os.Getenv("SNIPGO_CONFIG_PATH"); envConfigPath != "" {
-		fmt.Printf("  Environment Variable: SNIPGO_CONFIG_PATH=%s\n", envConfigPath)
-	}
 
 	return nil
 }

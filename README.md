@@ -66,13 +66,17 @@ wails build
 
 SnipGo supports configuration through environment variables and config file:
 
-1. **Config File Path** (environment variable):
-   ```bash
-   export SNIPGO_CONFIG_PATH="/path/to/config.yaml"
-   ```
-   Default: `~/.config/snipgo/config.yaml`
+1. **Config File Path** (priority order):
+   - Environment variable: `SNIPGO_CONFIG_PATH`
+   - Default: `~/.config/snipgo/config.yaml`
 
-2. **Config File** (`~/.config/snipgo/config.yaml` or path set by `SNIPGO_CONFIG_PATH`):
+   ```bash
+   # Using environment variable
+   export SNIPGO_CONFIG_PATH="/path/to/config.yaml"
+   snipgo list
+   ```
+
+2. **Config File** (`~/.config/snipgo/config.yaml` or path set by env):
    ```yaml
    data_directory: ~/my-snippets
    ```

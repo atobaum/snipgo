@@ -39,11 +39,11 @@ func TestLoadConfig(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	tests := []struct {
-		name      string
-		setup     func() error
-		cleanup   func() error
-		wantDir   string
-		wantErr   bool
+		name    string
+		setup   func() error
+		cleanup func() error
+		wantDir string
+		wantErr bool
 	}{
 		{
 			name: "no config file",
@@ -100,7 +100,7 @@ func TestLoadConfig(t *testing.T) {
 				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
 				return os.Remove(configPath)
 			},
-			wantDir: "", // Will use default
+			wantDir: "",   // Will use default
 			wantErr: true, // LoadConfig returns error on parse error
 		},
 		{
@@ -194,11 +194,11 @@ func TestExpandPath(t *testing.T) {
 	homeDir, _ := os.UserHomeDir()
 
 	tests := []struct {
-		name     string
-		path     string
-		setup    func() error
-		cleanup  func() error
-		want     string
+		name    string
+		path    string
+		setup   func() error
+		cleanup func() error
+		want    string
 	}{
 		{
 			name: "expand ~",
@@ -264,11 +264,11 @@ func TestGetConfigPath(t *testing.T) {
 	defer os.Setenv("SNIPGO_CONFIG_PATH", originalEnv)
 
 	tests := []struct {
-		name      string
-		setup     func() error
-		cleanup   func() error
-		wantPath  string
-		wantErr   bool
+		name     string
+		setup    func() error
+		cleanup  func() error
+		wantPath string
+		wantErr  bool
 	}{
 		{
 			name: "environment variable set",
@@ -459,4 +459,3 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
-

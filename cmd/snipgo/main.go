@@ -77,18 +77,6 @@ func main() {
 	// Set default log level before PersistentPreRun (for early error logging)
 	setupLogger("info")
 
-	var err error
-	manager, err = core.NewManager()
-	if err != nil {
-		slog.Error("failed to initialize manager", "error", err)
-		os.Exit(1)
-	}
-
-	if err := manager.LoadAll(); err != nil {
-		slog.Error("failed to load snippets", "error", err)
-		os.Exit(1)
-	}
-
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
