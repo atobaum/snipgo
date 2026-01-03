@@ -48,3 +48,4 @@ func runCompletionZsh(cmd *cobra.Command, args []string) error {
 	return rootCmd.GenZshCompletion(os.Stdout)
 }
 
+

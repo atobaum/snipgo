@@ -114,3 +114,4 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 	return selectedSnippet, nil
 }
 
+
