@@ -31,6 +31,7 @@ frontend/package.json.md5
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *~
