@@ -79,6 +79,17 @@ SnipGo supports configuration through environment variables and config file:
 
 3. **Default**: `~/.config/snipgo/snippets/`
 
+### Log Level
+
+Set log level using the `--log-level` or `-l` flag:
+
+```bash
+snipgo --log-level debug list
+snipgo -l warn search
+```
+
+Available levels: `debug`, `info`, `warn`, `error` (default: `info`)
+
 ### CLI Configuration Commands
 
 ```bash

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -31,7 +32,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Warning: config file does not exist: %s, using defaults\n", configPath)
+		slog.Warn("config file does not exist, using defaults", "path", configPath)
 		// Use default config
 		return config, nil
 	}

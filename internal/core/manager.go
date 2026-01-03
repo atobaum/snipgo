@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -49,19 +50,19 @@ func (m *Manager) LoadAll() error {
 		content, err := m.storage.ReadFile(filepath)
 		if err != nil {
 			// Log error but continue loading other files
-			fmt.Printf("Warning: failed to read file %s: %v\n", filepath, err)
+			slog.Warn("failed to read file", "path", filepath, "error", err)
 			continue
 		}
 
 		snippet, err := ParseFrontmatter(content)
 		if err != nil {
 			// Log error but continue loading other files
-			fmt.Printf("Warning: failed to parse file %s: %v\n", filepath, err)
+			slog.Warn("failed to parse file", "path", filepath, "error", err)
 			continue
 		}
 
 		if err := snippet.Validate(); err != nil {
-			fmt.Printf("Warning: invalid snippet in file %s: %v\n", filepath, err)
+			slog.Warn("invalid snippet in file", "path", filepath, "error", err)
 			continue
 		}
 
