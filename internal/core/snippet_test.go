@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 func TestNewSnippet(t *testing.T) {
@@ -38,9 +38,16 @@ func TestNewSnippet(t *testing.T) {
 				t.Errorf("NewSnippet() Title = %v, want %v", snippet.Title, tt.wantTitle)
 			}
 
-			// Validate UUID format
-			if _, err := uuid.Parse(snippet.ID); err != nil {
-				t.Errorf("NewSnippet() ID = %v, want valid UUID, got error: %v", snippet.ID, err)
+			// Validate ID format (should be 26 characters, ULID)
+			if len(snippet.ID) != 26 {
+				t.Errorf("NewSnippet() ID length = %v, want 26", len(snippet.ID))
+			}
+			if snippet.ID == "" {
+				t.Error("NewSnippet() ID is empty")
+			}
+			// Validate ULID format
+			if _, err := ulid.Parse(snippet.ID); err != nil {
+				t.Errorf("NewSnippet() ID = %v, want valid ULID, got error: %v", snippet.ID, err)
 			}
 
 			// Validate initial values

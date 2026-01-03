@@ -1,9 +1,10 @@
 package core
 
 import (
+	"crypto/rand"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 // Snippet represents a code snippet with metadata
@@ -18,11 +19,18 @@ type Snippet struct {
 	Body       string    `yaml:"-" json:"body"` // Body is not in frontmatter
 }
 
-// NewSnippet creates a new snippet with generated UUID and timestamps
+// generateID generates a ULID (26 characters, lexicographically sortable)
+func generateID() string {
+	entropy := rand.Reader
+	ms := ulid.Timestamp(time.Now())
+	return ulid.MustNew(ms, entropy).String()
+}
+
+// NewSnippet creates a new snippet with generated ULID and timestamps
 func NewSnippet(title string) *Snippet {
 	now := time.Now()
 	return &Snippet{
-		ID:         uuid.New().String(),
+		ID:         generateID(),
 		Title:      title,
 		Tags:       []string{},
 		Language:   "",
