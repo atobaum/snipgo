@@ -36,7 +36,7 @@
 
 ## 3. 데이터 구조 (Data Schema)
 
-- **저장 위치:** `~/.snipgo/snippets/`
+- **저장 위치:** `~/.config/snipgo/snippets/`
 - **파일명 규칙:** `{Title}_{Timestamp}.md` (중복 방지 및 가독성 확보)
 - **파일 포맷:** YAML Frontmatter + Markdown Body
 

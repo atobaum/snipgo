@@ -12,10 +12,12 @@ func TestManager_Search(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -237,10 +239,12 @@ func TestManager_Search_ScoreOrdering(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {
@@ -321,10 +325,12 @@ func TestManager_Search_TitleMatchExclusion(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
-	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
-
-	os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
 
 	m, err := NewManager()
 	if err != nil {

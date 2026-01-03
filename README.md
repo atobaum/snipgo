@@ -4,7 +4,7 @@ Local-First Snippet Manager built with Go, Wails v2, and React.
 
 ## Features
 
-- **Local First**: All data stored in `~/.snipgo/snippets/` as Markdown files
+- **Local First**: All data stored in `~/.config/snipgo/snippets/` as Markdown files
 - **File over App**: Edit snippets with any text editor (VS Code, Obsidian, etc.)
 - **CLI + GUI**: Use both terminal and desktop interface
 - **Fuzzy Search**: Fast in-memory search with fuzzy matching
@@ -23,8 +23,8 @@ brew install snipgo
 
 ### Prerequisites
 
-- Go 1.21+
-- Node.js 18+ and pnpm
+- Go 1.25+
+- Node.js 24 LTS and pnpm
 - Wails v2 CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 
 ### Build
@@ -66,17 +66,33 @@ wails build
 
 SnipGo supports configuration through environment variables and config file:
 
-1. **Environment Variable** (highest priority):
+1. **Config File Path** (priority order):
+   - Environment variable: `SNIPGO_CONFIG_PATH`
+   - Default: `~/.config/snipgo/config.yaml`
+
    ```bash
-   export SNIPGO_DATA_DIR="/path/to/your/snippets"
+   # Using environment variable
+   export SNIPGO_CONFIG_PATH="/path/to/config.yaml"
+   snipgo list
    ```
 
-2. **Config File** (`~/.config/snipgo/config.yaml`):
+2. **Config File** (`~/.config/snipgo/config.yaml` or path set by env):
    ```yaml
    data_directory: ~/my-snippets
    ```
 
-3. **Default**: `~/.snipgo/snippets/`
+3. **Default**: `~/.config/snipgo/snippets/`
+
+### Log Level
+
+Set log level using the `--log-level` or `-l` flag:
+
+```bash
+snipgo --log-level debug list
+snipgo -l warn search
+```
+
+Available levels: `debug`, `info`, `warn`, `error` (default: `info`)
 
 ### CLI Configuration Commands
 

@@ -34,4 +34,3 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Copied body of snippet '%s' to clipboard\n", topResult.Snippet.Title)
 	return nil
 }
-

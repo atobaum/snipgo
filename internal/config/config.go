@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -15,9 +16,8 @@ type Config struct {
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
-	homeDir, _ := os.UserHomeDir()
 	return &Config{
-		DataDirectory: filepath.Join(homeDir, ".snipgo", "snippets"),
+		DataDirectory: "~/.config/snipgo/snippets",
 	}
 }
 
@@ -25,21 +25,15 @@ func DefaultConfig() *Config {
 func LoadConfig() (*Config, error) {
 	config := DefaultConfig()
 
-	// 1. Check environment variable first
-	if envDataDir := os.Getenv("SNIPGO_DATA_DIR"); envDataDir != "" {
-		config.DataDirectory = expandPath(envDataDir)
-		return config, nil
-	}
+	configPath, err := GetConfigPath()
 
-	// 2. Load from config file
-	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return config, fmt.Errorf("failed to get home directory: %w", err)
+		return config, fmt.Errorf("failed to get config path: %w", err)
 	}
 
-	configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		// Config file doesn't exist, use default
+		slog.Warn("config file does not exist, using defaults", "path", configPath)
+		// Use default config
 		return config, nil
 	}
 
@@ -83,7 +77,14 @@ func expandPath(path string) string {
 }
 
 // GetConfigPath returns the path to the config file
+// Priority: 1. SNIPGO_CONFIG_PATH env var, 2. default path (~/.config/snipgo/config.yaml)
 func GetConfigPath() (string, error) {
+	// 1. Check environment variable first
+	if envConfigPath := os.Getenv("SNIPGO_CONFIG_PATH"); envConfigPath != "" {
+		return expandPath(envConfigPath), nil
+	}
+
+	// 2. Use default path
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
@@ -95,7 +96,7 @@ func GetConfigPath() (string, error) {
 func SaveConfig(config *Config) error {
 	configPath, err := GetConfigPath()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get config path: %w", err)
 	}
 
 	// Create config directory if it doesn't exist
