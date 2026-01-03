@@ -98,6 +98,10 @@ func runConfigBootstrap(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get config path: %w", err)
 	}
 
+	if _, err := os.Stat(configPath); err == nil {
+		return fmt.Errorf("config file already exists: %s. Please delete file and re-run", configPath)
+	}
+
 	if err := config.SaveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
