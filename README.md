@@ -106,11 +106,20 @@ snipgo search "docker"
 # Execute a snippet as shell command (interactive selection with fzf)
 snipgo exec
 
+# Edit a snippet (interactive selection with fzf, opens in $EDITOR)
+snipgo edit
+
 # Copy snippet body to clipboard
 snipgo copy "docker"
+
+# Show version information
+snipgo version
+
+# Generate zsh completion script
+snipgo completion zsh
 ```
 
-**Note**: `exec` and `search` commands require [fzf](https://github.com/junegunn/fzf) to be installed for interactive selection.
+**Note**: `exec`, `search`, and `edit` commands require [fzf](https://github.com/junegunn/fzf) to be installed for interactive selection.
 
 ### GUI
 
@@ -163,6 +172,36 @@ snipgo/
 ├── frontend/         # React frontend
 └── main.go           # Wails entry point
 ```
+
+## Roadmap
+
+### ✅ Phase 1: MVP (Completed)
+
+**Core Features:**
+- ✅ Go project structure with Clean Architecture
+- ✅ Markdown I/O with YAML frontmatter parsing
+- ✅ CLI commands: `new`, `list`, `search`, `copy`, `exec`, `edit`, `version`, `completion`, `config`
+- ✅ GUI with Wails v2: list view, detail view/edit, clipboard copy
+- ✅ Configuration management
+- ✅ Fuzzy search with in-memory indexing
+- ✅ Tag input UI with chips/badges style (GUI)
+
+### 🚧 Phase 2: Usability (In Progress)
+
+**Planned Features:**
+- ⏳ **Hot Reload**: fsnotify-based file watcher for real-time GUI updates when files are modified externally (CLI → GUI sync)
+- ⏳ **CLI Enhancements**: Add flags to `new` command (`-t "Title" --tags "go,api"`) to pre-fill frontmatter before opening editor
+- ⏳ **GUI Improvements**: 
+  - Filtering and sorting by `is_favorite`
+  - Enhanced tag management and filtering
+
+### 📋 Phase 3: Polish (Planned)
+
+**Future Features:**
+- 📋 **Export**: Code snippet image capture (Carbon-style)
+- 📋 **Interactive TUI**: Enhanced CLI with bubbletea for interactive search/select (alternative to fzf)
+- 📋 **Theme**: Light/Dark mode and editor theme customization
+- 📋 **Cloud Sync**: Optional synchronization with GitHub Gist or Git repositories (maintaining local-first principle)
 
 ## Related Projects
 
