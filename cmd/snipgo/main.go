@@ -28,6 +28,19 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		level, _ := cmd.Flags().GetString("log-level")
 		setupLogger(level)
+
+		// Initialize manager once
+		var err error
+		manager, err = core.NewManager()
+		if err != nil {
+			slog.Error("failed to initialize manager", "error", err)
+			os.Exit(1)
+		}
+
+		if err := manager.LoadAll(); err != nil {
+			slog.Error("failed to load snippets", "error", err)
+			os.Exit(1)
+		}
 	},
 }
 
