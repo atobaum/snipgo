@@ -121,6 +121,28 @@ snipgo completion zsh
 
 **Note**: `exec`, `search`, and `edit` commands require [fzf](https://github.com/junegunn/fzf) to be installed for interactive selection.
 
+### Zsh Shortcut
+
+You can set up a keyboard shortcut to quickly search and insert snippets. Add the following to your `~/.zshrc`:
+
+```bash
+function snipgo-select() {
+  BUFFER=$(snipgo search "$LBUFFER" 2>/dev/null)
+  CURSOR=$#BUFFER
+  zle redisplay
+}
+zle -N snipgo-select
+stty -ixon
+bindkey '^s' snipgo-select
+```
+
+This binds `Ctrl+S` to search snippets. When you press `Ctrl+S`, it will:
+1. Use the text before your cursor as a search query
+2. Open fzf to select a snippet
+3. Insert the snippet body at your cursor position
+
+**Note**: The `stty -ixon` command disables flow control to allow `Ctrl+S` to be used as a shortcut. You can change `'^s'` to any key combination you prefer (e.g., `'^r'` for Ctrl+R).
+
 ### GUI
 
 Run the GUI application:
