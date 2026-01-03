@@ -1,0 +1,373 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestDefaultConfig(t *testing.T) {
+	cfg := DefaultConfig()
+
+	if cfg == nil {
+		t.Fatal("DefaultConfig() returned nil")
+	}
+
+	if cfg.DataDirectory == "" {
+		t.Error("DefaultConfig() DataDirectory is empty")
+	}
+
+	// Verify it contains .snipgo/snippets
+	homeDir, _ := os.UserHomeDir()
+	expected := filepath.Join(homeDir, ".snipgo", "snippets")
+	if cfg.DataDirectory != expected {
+		t.Errorf("DefaultConfig() DataDirectory = %v, want %v", cfg.DataDirectory, expected)
+	}
+}
+
+func TestLoadConfig(t *testing.T) {
+	// Save original environment
+	originalEnv := os.Getenv("SNIPGO_DATA_DIR")
+	defer os.Setenv("SNIPGO_DATA_DIR", originalEnv)
+
+	// Create temporary directory for config file
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	tests := []struct {
+		name      string
+		setup     func() error
+		cleanup   func() error
+		wantDir   string
+		wantErr   bool
+	}{
+		{
+			name: "environment variable set",
+			setup: func() error {
+				os.Setenv("SNIPGO_DATA_DIR", tmpDir)
+				return nil
+			},
+			cleanup: func() error {
+				os.Unsetenv("SNIPGO_DATA_DIR")
+				return nil
+			},
+			wantDir: tmpDir,
+			wantErr: false,
+		},
+		{
+			name: "no environment variable, no config file",
+			setup: func() error {
+				os.Unsetenv("SNIPGO_DATA_DIR")
+				// Remove config file if exists
+				homeDir, _ := os.UserHomeDir()
+				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+				os.Remove(configPath)
+				return nil
+			},
+			cleanup: func() error {
+				return nil
+			},
+			wantDir: "", // Will use default
+			wantErr: false,
+		},
+		{
+			name: "config file exists with valid YAML",
+			setup: func() error {
+				os.Unsetenv("SNIPGO_DATA_DIR")
+				homeDir, _ := os.UserHomeDir()
+				configDir := filepath.Join(homeDir, ".config", "snipgo")
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					return err
+				}
+				configPath := filepath.Join(configDir, "config.yaml")
+				content := "data_directory: " + tmpDir + "\n"
+				return os.WriteFile(configPath, []byte(content), 0644)
+			},
+			cleanup: func() error {
+				homeDir, _ := os.UserHomeDir()
+				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+				return os.Remove(configPath)
+			},
+			wantDir: tmpDir,
+			wantErr: false,
+		},
+		{
+			name: "config file with invalid YAML",
+			setup: func() error {
+				os.Unsetenv("SNIPGO_DATA_DIR")
+				homeDir, _ := os.UserHomeDir()
+				configDir := filepath.Join(homeDir, ".config", "snipgo")
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					return err
+				}
+				configPath := filepath.Join(configDir, "config.yaml")
+				content := "invalid: [unclosed\n"
+				return os.WriteFile(configPath, []byte(content), 0644)
+			},
+			cleanup: func() error {
+				homeDir, _ := os.UserHomeDir()
+				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+				return os.Remove(configPath)
+			},
+			wantDir: "", // Will use default
+			wantErr: true, // LoadConfig returns error on parse error
+		},
+		{
+			name: "config file with empty data_directory",
+			setup: func() error {
+				os.Unsetenv("SNIPGO_DATA_DIR")
+				homeDir, _ := os.UserHomeDir()
+				configDir := filepath.Join(homeDir, ".config", "snipgo")
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					return err
+				}
+				configPath := filepath.Join(configDir, "config.yaml")
+				content := "data_directory: \"\"\n"
+				return os.WriteFile(configPath, []byte(content), 0644)
+			},
+			cleanup: func() error {
+				homeDir, _ := os.UserHomeDir()
+				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+				return os.Remove(configPath)
+			},
+			wantDir: "", // Empty string means use default
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.setup(); err != nil {
+				t.Fatalf("Setup failed: %v", err)
+			}
+
+			cfg, err := LoadConfig()
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("LoadConfig() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.cleanup != nil {
+					tt.cleanup()
+				}
+				return
+			}
+
+			if cfg == nil {
+				t.Error("LoadConfig() returned nil config")
+				if tt.cleanup != nil {
+					tt.cleanup()
+				}
+				return
+			}
+
+			if tt.wantDir != "" {
+				if cfg.DataDirectory != tt.wantDir {
+					t.Errorf("LoadConfig() DataDirectory = %v, want %v", cfg.DataDirectory, tt.wantDir)
+				}
+			} else {
+				// Verify default is used
+				homeDir, _ := os.UserHomeDir()
+				expected := filepath.Join(homeDir, ".snipgo", "snippets")
+				if cfg.DataDirectory != expected {
+					t.Errorf("LoadConfig() DataDirectory = %v, want default %v", cfg.DataDirectory, expected)
+				}
+			}
+
+			if tt.cleanup != nil {
+				if err := tt.cleanup(); err != nil {
+					t.Logf("Cleanup warning: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestExpandPath(t *testing.T) {
+	homeDir, _ := os.UserHomeDir()
+
+	tests := []struct {
+		name     string
+		path     string
+		setup    func() error
+		cleanup  func() error
+		want     string
+	}{
+		{
+			name: "expand ~",
+			path: "~/.snipgo",
+			want: filepath.Join(homeDir, ".snipgo"),
+		},
+		{
+			name: "expand ~ with subpath",
+			path: "~/test/path",
+			want: filepath.Join(homeDir, "test", "path"),
+		},
+		{
+			name: "expand environment variable",
+			path: "$HOME/.snipgo",
+			setup: func() error {
+				return nil
+			},
+			want: filepath.Join(homeDir, ".snipgo"),
+		},
+		{
+			name: "empty path",
+			path: "",
+			want: "",
+		},
+		{
+			name: "normal path",
+			path: "/tmp/test",
+			want: "/tmp/test",
+		},
+		{
+			name: "path with ~ in middle",
+			path: "/tmp/~test",
+			want: filepath.Clean("/tmp/~test"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				if err := tt.setup(); err != nil {
+					t.Fatalf("Setup failed: %v", err)
+				}
+			}
+
+			got := expandPath(tt.path)
+
+			if got != tt.want {
+				t.Errorf("expandPath(%v) = %v, want %v", tt.path, got, tt.want)
+			}
+
+			if tt.cleanup != nil {
+				if err := tt.cleanup(); err != nil {
+					t.Logf("Cleanup warning: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestGetConfigPath(t *testing.T) {
+	path, err := GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath() error = %v", err)
+	}
+
+	if path == "" {
+		t.Error("GetConfigPath() returned empty path")
+	}
+
+	// Verify it contains .config/snipgo/config.yaml
+	homeDir, _ := os.UserHomeDir()
+	expected := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+	if path != expected {
+		t.Errorf("GetConfigPath() = %v, want %v", path, expected)
+	}
+}
+
+func TestSaveConfig(t *testing.T) {
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Save original config path
+	homeDir, _ := os.UserHomeDir()
+	originalConfigPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
+	originalConfigExists := false
+	var originalContent []byte
+	if _, err := os.Stat(originalConfigPath); err == nil {
+		originalConfigExists = true
+		originalContent, _ = os.ReadFile(originalConfigPath)
+	}
+	defer func() {
+		if originalConfigExists {
+			os.WriteFile(originalConfigPath, originalContent, 0644)
+		} else {
+			os.Remove(originalConfigPath)
+		}
+	}()
+
+	// Create config directory
+	configDir := filepath.Dir(originalConfigPath)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("Failed to create config dir: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name: "save valid config",
+			config: &Config{
+				DataDirectory: tmpDir,
+			},
+			wantErr: false,
+		},
+		{
+			name: "save config with empty data_directory",
+			config: &Config{
+				DataDirectory: "",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Remove config file if exists
+			os.Remove(originalConfigPath)
+
+			err := SaveConfig(tt.config)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SaveConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				// Verify file was created
+				if _, err := os.Stat(originalConfigPath); os.IsNotExist(err) {
+					t.Error("SaveConfig() did not create config file")
+					return
+				}
+
+				// Verify content
+				content, err := os.ReadFile(originalConfigPath)
+				if err != nil {
+					t.Fatalf("Failed to read config file: %v", err)
+				}
+
+				if len(content) == 0 {
+					t.Error("SaveConfig() created empty config file")
+				}
+
+				// Verify it contains data_directory
+				contentStr := string(content)
+				if !contains(contentStr, "data_directory") {
+					t.Error("SaveConfig() config file does not contain data_directory")
+				}
+			}
+		})
+	}
+}
+
+// Helper function
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
