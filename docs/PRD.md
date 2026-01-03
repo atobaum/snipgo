@@ -122,3 +122,4 @@ services:
 - **Export:** 코드 스니펫 이미지 캡처 (Carbon 스타일).
 - **CLI:** bubbletea 등을 활용한 Interactive Search/Select TUI.
 - **Theme:** Light/Dark 모드 및 에디터 테마 커스텀.
+- **Sync:** 클라우드 동기화 기능 (GitHub Gist, Git 저장소 등). Local-first 원칙을 유지하면서 선택적 동기화 제공.
