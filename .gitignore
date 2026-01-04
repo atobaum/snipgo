@@ -9,6 +9,7 @@
 *.test
 .config/
 .envrc
+.snipgo/
 
 # Output of the go coverage tool
 coverage.*
