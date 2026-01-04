@@ -64,20 +64,18 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "config file exists with valid YAML",
 			setup: func() error {
-				os.Unsetenv("SNIPGO_CONFIG_PATH")
-				homeDir, _ := os.UserHomeDir()
-				configDir := filepath.Join(homeDir, ".config", "snipgo")
-				if err := os.MkdirAll(configDir, 0755); err != nil {
+				// Use temp directory instead of home directory
+				testConfigPath := filepath.Join(tmpDir, "test-config.yaml")
+				content := "data_directory: " + tmpDir + "\n"
+				if err := os.WriteFile(testConfigPath, []byte(content), 0644); err != nil {
 					return err
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
-				content := "data_directory: " + tmpDir + "\n"
-				return os.WriteFile(configPath, []byte(content), 0644)
+				os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+				return nil
 			},
 			cleanup: func() error {
-				homeDir, _ := os.UserHomeDir()
-				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
-				return os.Remove(configPath)
+				os.Unsetenv("SNIPGO_CONFIG_PATH")
+				return nil
 			},
 			wantDir: tmpDir,
 			wantErr: false,
@@ -85,20 +83,18 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "config file with invalid YAML",
 			setup: func() error {
-				os.Unsetenv("SNIPGO_CONFIG_PATH")
-				homeDir, _ := os.UserHomeDir()
-				configDir := filepath.Join(homeDir, ".config", "snipgo")
-				if err := os.MkdirAll(configDir, 0755); err != nil {
+				// Use temp directory instead of home directory
+				testConfigPath := filepath.Join(tmpDir, "invalid-config.yaml")
+				content := "invalid: [unclosed\n"
+				if err := os.WriteFile(testConfigPath, []byte(content), 0644); err != nil {
 					return err
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
-				content := "invalid: [unclosed\n"
-				return os.WriteFile(configPath, []byte(content), 0644)
+				os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+				return nil
 			},
 			cleanup: func() error {
-				homeDir, _ := os.UserHomeDir()
-				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
-				return os.Remove(configPath)
+				os.Unsetenv("SNIPGO_CONFIG_PATH")
+				return nil
 			},
 			wantDir: "",   // Will use default
 			wantErr: true, // LoadConfig returns error on parse error
@@ -106,20 +102,18 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "config file with empty data_directory",
 			setup: func() error {
-				os.Unsetenv("SNIPGO_CONFIG_PATH")
-				homeDir, _ := os.UserHomeDir()
-				configDir := filepath.Join(homeDir, ".config", "snipgo")
-				if err := os.MkdirAll(configDir, 0755); err != nil {
+				// Use temp directory instead of home directory
+				testConfigPath := filepath.Join(tmpDir, "empty-config.yaml")
+				content := "data_directory: \"\"\n"
+				if err := os.WriteFile(testConfigPath, []byte(content), 0644); err != nil {
 					return err
 				}
-				configPath := filepath.Join(configDir, "config.yaml")
-				content := "data_directory: \"\"\n"
-				return os.WriteFile(configPath, []byte(content), 0644)
+				os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+				return nil
 			},
 			cleanup: func() error {
-				homeDir, _ := os.UserHomeDir()
-				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
-				return os.Remove(configPath)
+				os.Unsetenv("SNIPGO_CONFIG_PATH")
+				return nil
 			},
 			wantDir: "", // Empty string means use default
 			wantErr: false,
@@ -367,28 +361,13 @@ func TestSaveConfig(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Save original config path
-	homeDir, _ := os.UserHomeDir()
-	originalConfigPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
-	originalConfigExists := false
-	var originalContent []byte
-	if _, err := os.Stat(originalConfigPath); err == nil {
-		originalConfigExists = true
-		originalContent, _ = os.ReadFile(originalConfigPath)
-	}
-	defer func() {
-		if originalConfigExists {
-			os.WriteFile(originalConfigPath, originalContent, 0644)
-		} else {
-			os.Remove(originalConfigPath)
-		}
-	}()
+	// Save original environment
+	originalConfigPathEnv := os.Getenv("SNIPGO_CONFIG_PATH")
+	defer os.Setenv("SNIPGO_CONFIG_PATH", originalConfigPathEnv)
 
-	// Create config directory
-	configDir := filepath.Dir(originalConfigPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create config dir: %v", err)
-	}
+	// Use temporary config path
+	testConfigPath := filepath.Join(tmpDir, "config.yaml")
+	os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
 
 	tests := []struct {
 		name    string
@@ -414,7 +393,7 @@ func TestSaveConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Remove config file if exists
-			os.Remove(originalConfigPath)
+			os.Remove(testConfigPath)
 
 			err := SaveConfig(tt.config)
 
@@ -425,13 +404,13 @@ func TestSaveConfig(t *testing.T) {
 
 			if !tt.wantErr {
 				// Verify file was created
-				if _, err := os.Stat(originalConfigPath); os.IsNotExist(err) {
+				if _, err := os.Stat(testConfigPath); os.IsNotExist(err) {
 					t.Error("SaveConfig() did not create config file")
 					return
 				}
 
 				// Verify content
-				content, err := os.ReadFile(originalConfigPath)
+				content, err := os.ReadFile(testConfigPath)
 				if err != nil {
 					t.Fatalf("Failed to read config file: %v", err)
 				}
