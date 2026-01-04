@@ -73,8 +73,12 @@ make type-check
 ./bin/snipgo list
 
 # Search snippets (requires fzf)
-./bin/snipgo search
-./bin/snipgo search "docker"
+./bin/snipgo search                              # List all snippets
+./bin/snipgo search -q "docker"                  # Search with query
+./bin/snipgo search --tag golang                 # Filter by tag
+./bin/snipgo search --tag golang --tag web       # Multiple tags (AND logic)
+./bin/snipgo search --lang bash                  # Filter by language
+./bin/snipgo search --tag devops --lang bash -q "deploy"  # Combined filters and query
 
 # Execute snippet as shell command (requires fzf)
 ./bin/snipgo exec
