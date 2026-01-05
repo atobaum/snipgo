@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"snipgo/internal/config"
 	"snipgo/internal/core"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -78,4 +79,56 @@ func (a *App) CopyToClipboard(text string) error {
 // ReloadSnippets reloads all snippets from disk
 func (a *App) ReloadSnippets() error {
 	return a.manager.LoadAll()
+}
+
+// GetAllTags returns all unique tags
+func (a *App) GetAllTags() ([]string, error) {
+	return a.manager.GetAllTags(), nil
+}
+
+// GetConfigPath returns the current config file path
+func (a *App) GetConfigPath() (string, error) {
+	return config.GetConfigPath()
+}
+
+// GetDataDirectory returns the current data directory
+func (a *App) GetDataDirectory() (string, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return cfg.DataDirectory, nil
+}
+
+// SetDataDirectory updates the data directory and reloads snippets
+func (a *App) SetDataDirectory(path string) error {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	cfg.DataDirectory = path
+	if err := config.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Recreate manager with new config
+	newManager, err := core.NewManager()
+	if err != nil {
+		return fmt.Errorf("failed to create new manager: %w", err)
+	}
+
+	if err := newManager.LoadAll(); err != nil {
+		return fmt.Errorf("failed to load snippets: %w", err)
+	}
+
+	a.manager = newManager
+	return nil
+}
+
+// BrowseForDirectory opens a directory picker dialog
+func (a *App) BrowseForDirectory() (string, error) {
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Snippets Directory",
+	})
 }

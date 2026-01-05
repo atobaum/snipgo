@@ -37,6 +37,7 @@ vi.mock('./bridge', () => ({
     DeleteSnippet: vi.fn(),
     ReloadSnippets: vi.fn(),
     CopyToClipboard: vi.fn(),
+    GetAllTags: vi.fn().mockResolvedValue([]),
   },
 }));
 

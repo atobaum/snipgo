@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
@@ -8,6 +8,9 @@ import { markdown } from "@codemirror/lang-markdown";
 import type { Extension } from "@codemirror/state";
 import { Snippet } from "../types";
 import { app } from "../bridge";
+import { useDebouncedSave } from "../hooks/useDebounce";
+
+const AUTO_SAVE_DELAY = 1500; // 1.5초
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
@@ -41,6 +44,14 @@ export function SnippetEditor({
   const [body, setBody] = useState("");
   const [rawMode, setRawMode] = useState(false);
   const [rawContent, setRawContent] = useState("");
+  const [saveStatus, setSaveStatus] = useState<
+    "saved" | "saving" | "pending" | null
+  >(null);
+
+  // 스니펫 로딩 중인지 추적 (로딩 중에는 auto-save 방지)
+  const isLoadingSnippetRef = useRef(false);
+  // 현재 스니펫 참조 (auto-save 콜백에서 사용)
+  const snippetRef = useRef(snippet);
 
   // isDirty 계산 (title, body, language만 - tag/favorite는 즉시 저장됨)
   const isDirty = useMemo(() => {
@@ -57,7 +68,66 @@ export function SnippetEditor({
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  // snippetRef 업데이트
   useEffect(() => {
+    snippetRef.current = snippet;
+  }, [snippet]);
+
+  // 자동 저장 함수
+  const performAutoSave = useCallback(async () => {
+    const currentSnippet = snippetRef.current;
+    if (!currentSnippet || isLoadingSnippetRef.current) return;
+
+    try {
+      setSaveStatus("saving");
+      const updatedSnippet: Snippet = {
+        ...currentSnippet,
+        title,
+        tags,
+        language,
+        is_favorite: isFavorite,
+        body,
+      };
+      await app.SaveSnippet(updatedSnippet);
+      await app.ReloadSnippets();
+      onSave(updatedSnippet);
+      setSaveStatus("saved");
+
+      // 2초 후 "saved" 상태 제거
+      setTimeout(() => setSaveStatus(null), 2000);
+    } catch (err) {
+      console.error("Auto-save failed:", err);
+      setSaveStatus(null);
+    }
+  }, [title, tags, language, isFavorite, body, onSave]);
+
+  // Debounced save 훅
+  const { debouncedSave, cancelPendingSave, flushSave } = useDebouncedSave(
+    performAutoSave,
+    AUTO_SAVE_DELAY
+  );
+
+  // isDirty 변경 시 debounced save 트리거
+  useEffect(() => {
+    if (isDirty && !isLoadingSnippetRef.current) {
+      setSaveStatus("pending");
+      debouncedSave();
+    }
+  }, [isDirty, title, body, language, debouncedSave]);
+
+  // 컴포넌트 언마운트 시 flush
+  useEffect(() => {
+    return () => {
+      flushSave();
+    };
+  }, [flushSave]);
+
+  // 스니펫 전환 시 상태 초기화
+  useEffect(() => {
+    // 스니펫 전환 시 pending save 취소
+    cancelPendingSave();
+    isLoadingSnippetRef.current = true;
+
     if (snippet) {
       setTitle(snippet.title);
       setTags([...snippet.tags]);
@@ -65,6 +135,7 @@ export function SnippetEditor({
       setLanguage(snippet.language);
       setIsFavorite(snippet.is_favorite);
       setBody(snippet.body);
+      setSaveStatus(null);
     } else {
       setTitle("");
       setTags([]);
@@ -72,8 +143,14 @@ export function SnippetEditor({
       setLanguage("");
       setIsFavorite(false);
       setBody("");
+      setSaveStatus(null);
     }
-  }, [snippet]);
+
+    // 상태 업데이트 후 로딩 플래그 해제
+    setTimeout(() => {
+      isLoadingSnippetRef.current = false;
+    }, 0);
+  }, [snippet, cancelPendingSave]);
 
   // tag/favorite 즉시 저장 헬퍼
   const saveTagsAndFavorite = useCallback(
@@ -118,29 +195,6 @@ export function SnippetEditor({
     const newFavorite = !isFavorite;
     setIsFavorite(newFavorite);
     saveTagsAndFavorite(tags, newFavorite); // 즉시 저장
-  };
-
-  const handleSave = async () => {
-    if (!snippet) return;
-
-    try {
-      const updatedSnippet: Snippet = {
-        ...snippet,
-        title,
-        tags,
-        language,
-        is_favorite: isFavorite,
-        body,
-      };
-      await app.SaveSnippet(updatedSnippet);
-      await app.ReloadSnippets();
-      onSave(updatedSnippet);
-    } catch (err) {
-      alert(
-        "Failed to save snippet: " +
-          (err instanceof Error ? err.message : "Unknown error")
-      );
-    }
   };
 
   const handleDelete = async () => {
@@ -224,9 +278,19 @@ ${body}`;
               placeholder="Title"
               className="flex-1 text-xl font-semibold border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
             />
-            {isDirty && (
+            {saveStatus === "pending" && (
               <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 rounded">
-                수정됨
+                Unsaved
+              </span>
+            )}
+            {saveStatus === "saving" && (
+              <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">
+                Saving...
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded">
+                Saved
               </span>
             )}
           </div>
@@ -309,12 +373,6 @@ ${body}`;
 
         {/* Actions */}
         <div className="mt-4 flex gap-2">
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Save
-          </button>
           <button
             onClick={handleCopyToClipboard}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"

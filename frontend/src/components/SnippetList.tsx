@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Snippet } from "../types";
 import { app } from "../bridge";
 
@@ -7,12 +7,29 @@ interface SnippetListProps {
   searchQuery?: string;
   selectedId?: string;
   refreshKey?: number; // 저장 후 목록 갱신 트리거
+  selectedTag?: string | null; // 선택된 태그로 필터링
 }
 
-export function SnippetList({ onSelect, searchQuery = "", selectedId, refreshKey = 0 }: SnippetListProps) {
+export function SnippetList({
+  onSelect,
+  searchQuery = "",
+  selectedId,
+  refreshKey = 0,
+  selectedTag = null,
+}: SnippetListProps) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 태그로 필터링된 스니펫
+  const filteredSnippets = useMemo(() => {
+    if (!selectedTag) return snippets;
+    return snippets.filter((snippet) =>
+      snippet.tags.some(
+        (tag) => tag.toLowerCase() === selectedTag.toLowerCase()
+      )
+    );
+  }, [snippets, selectedTag]);
 
   const loadSnippets = useCallback(async () => {
     try {
@@ -58,7 +75,7 @@ export function SnippetList({ onSelect, searchQuery = "", selectedId, refreshKey
     );
   }
 
-  if (snippets.length === 0) {
+  if (filteredSnippets.length === 0) {
     return (
       <div className="p-4">
         <p className="text-gray-500">No snippets found.</p>
@@ -68,7 +85,7 @@ export function SnippetList({ onSelect, searchQuery = "", selectedId, refreshKey
 
   return (
     <div className="divide-y divide-gray-200">
-      {snippets.map((snippet) => (
+      {filteredSnippets.map((snippet) => (
         <div
           key={snippet.id}
           onClick={() => onSelect(snippet)}
