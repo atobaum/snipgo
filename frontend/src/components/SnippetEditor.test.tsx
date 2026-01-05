@@ -11,6 +11,7 @@ vi.mock("../bridge", () => ({
     DeleteSnippet: vi.fn().mockResolvedValue(undefined),
     ReloadSnippets: vi.fn().mockResolvedValue(undefined),
     CopyToClipboard: vi.fn().mockResolvedValue(undefined),
+    GetAllTags: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -93,17 +94,21 @@ describe("SnippetEditor", () => {
       await user.clear(titleInput);
       await user.type(titleInput, "New Title");
 
-      expect(screen.getByText("수정됨")).toBeInTheDocument();
+      expect(screen.getByText("Unsaved")).toBeInTheDocument();
       expect(defaultProps.onDirtyChange).toHaveBeenCalledWith(true);
     });
 
     it("body 변경 시 수정됨 표시가 나타난다", async () => {
+      const user = userEvent.setup();
       render(<SnippetEditor {...defaultProps} />);
 
       const bodyInput = screen.getByTestId("codemirror-mock");
-      fireEvent.change(bodyInput, { target: { value: "new body content" } });
+      await user.clear(bodyInput);
+      await user.type(bodyInput, "new body content");
 
-      expect(screen.getByText("수정됨")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Unsaved")).toBeInTheDocument();
+      });
       expect(defaultProps.onDirtyChange).toHaveBeenCalledWith(true);
     });
 
@@ -115,7 +120,7 @@ describe("SnippetEditor", () => {
       await user.clear(languageInput);
       await user.type(languageInput, "python");
 
-      expect(screen.getByText("수정됨")).toBeInTheDocument();
+      expect(screen.getByText("Unsaved")).toBeInTheDocument();
     });
 
     it("tag 변경은 isDirty에 영향을 주지 않는다 (즉시 저장되므로)", async () => {
@@ -126,7 +131,7 @@ describe("SnippetEditor", () => {
       await user.type(tagInput, "newtag{enter}");
 
       // 수정됨 표시가 나타나지 않아야 함
-      expect(screen.queryByText("수정됨")).not.toBeInTheDocument();
+      expect(screen.queryByText("Unsaved")).not.toBeInTheDocument();
     });
   });
 
