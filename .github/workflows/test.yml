@@ -16,6 +16,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Create frontend/dist directory for embed
+        run: mkdir -p frontend/dist && touch frontend/dist/.gitkeep
+
       - name: Run tests
         run: go test -v -race ./...
 
