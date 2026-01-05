@@ -1,4 +1,4 @@
-.PHONY: build build-cli build-gui dev clean install-deps lint lint-go lint-ts lint-fix
+.PHONY: build build-cli build-gui dev clean install-deps lint lint-go lint-ts lint-fix test
 
 # Build CLI only
 build-cli:
@@ -97,5 +97,12 @@ lint-fix:
 		goimports -w .; \
 	fi
 	@echo "Linting issues fixed!"
+
+# Run tests
+test:
+	@echo "Running Go tests..."
+	@go test ./...
+	@echo "Running TypeScript tests..."
+	@cd frontend && pnpm test
 
 

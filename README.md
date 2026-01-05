@@ -115,9 +115,13 @@ snipgo new
 # List all snippets
 snipgo list
 
-# Search snippets interactively with fzf (no args = all snippets)
-snipgo search
-snipgo search "docker"
+# Search snippets interactively with fzf
+snipgo search                                    # List all snippets
+snipgo search -q "docker"                        # Search with query
+snipgo search --tag golang                       # Filter by tag
+snipgo search --tag golang --tag web             # Multiple tags (AND logic)
+snipgo search --lang bash                        # Filter by language
+snipgo search --tag devops --lang bash -q "deploy"  # Combined filters
 
 # Execute a snippet as shell command (interactive selection with fzf)
 snipgo exec
@@ -143,7 +147,7 @@ You can set up a keyboard shortcut to quickly search and insert snippets. Add th
 
 ```bash
 function snipgo-select() {
-  BUFFER=$(snipgo search "$LBUFFER" 2>/dev/null)
+  BUFFER=$(snipgo search -q "$LBUFFER" 2>/dev/null)
   CURSOR=$#BUFFER
   zle redisplay
 }
@@ -153,7 +157,7 @@ bindkey '^s' snipgo-select
 ```
 
 This binds `Ctrl+S` to search snippets. When you press `Ctrl+S`, it will:
-1. Use the text before your cursor as a search query
+1. Use the text before your cursor as a search query (via `-q` flag)
 2. Open fzf to select a snippet
 3. Insert the snippet body at your cursor position
 

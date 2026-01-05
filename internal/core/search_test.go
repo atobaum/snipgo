@@ -366,3 +366,323 @@ func TestManager_Search_TitleMatchExclusion(t *testing.T) {
 	}
 }
 
+func TestMatchesTags(t *testing.T) {
+	tests := []struct {
+		name        string
+		snippet     *Snippet
+		filterTags  []string
+		wantMatch   bool
+	}{
+		{
+			name:        "empty filter matches all",
+			snippet:     &Snippet{Tags: []string{"go", "web"}},
+			filterTags:  []string{},
+			wantMatch:   true,
+		},
+		{
+			name:        "single tag match",
+			snippet:     &Snippet{Tags: []string{"go", "web"}},
+			filterTags:  []string{"go"},
+			wantMatch:   true,
+		},
+		{
+			name:        "multiple tags match (AND)",
+			snippet:     &Snippet{Tags: []string{"go", "web", "api"}},
+			filterTags:  []string{"go", "web"},
+			wantMatch:   true,
+		},
+		{
+			name:        "case insensitive match",
+			snippet:     &Snippet{Tags: []string{"Go", "Web"}},
+			filterTags:  []string{"go", "web"},
+			wantMatch:   true,
+		},
+		{
+			name:        "missing one tag (AND logic fails)",
+			snippet:     &Snippet{Tags: []string{"go"}},
+			filterTags:  []string{"go", "web"},
+			wantMatch:   false,
+		},
+		{
+			name:        "no matching tags",
+			snippet:     &Snippet{Tags: []string{"python"}},
+			filterTags:  []string{"go"},
+			wantMatch:   false,
+		},
+		{
+			name:        "empty snippet tags",
+			snippet:     &Snippet{Tags: []string{}},
+			filterTags:  []string{"go"},
+			wantMatch:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchesTags(tt.snippet, tt.filterTags)
+			if got != tt.wantMatch {
+				t.Errorf("matchesTags() = %v, want %v", got, tt.wantMatch)
+			}
+		})
+	}
+}
+
+func TestMatchesLanguage(t *testing.T) {
+	tests := []struct {
+		name       string
+		snippet    *Snippet
+		filterLang string
+		wantMatch  bool
+	}{
+		{
+			name:       "empty filter matches all",
+			snippet:    &Snippet{Language: "go"},
+			filterLang: "",
+			wantMatch:  true,
+		},
+		{
+			name:       "exact match",
+			snippet:    &Snippet{Language: "go"},
+			filterLang: "go",
+			wantMatch:  true,
+		},
+		{
+			name:       "case insensitive match",
+			snippet:    &Snippet{Language: "Python"},
+			filterLang: "python",
+			wantMatch:  true,
+		},
+		{
+			name:       "case insensitive match uppercase",
+			snippet:    &Snippet{Language: "bash"},
+			filterLang: "BASH",
+			wantMatch:  true,
+		},
+		{
+			name:       "no match",
+			snippet:    &Snippet{Language: "go"},
+			filterLang: "python",
+			wantMatch:  false,
+		},
+		{
+			name:       "empty snippet language",
+			snippet:    &Snippet{Language: ""},
+			filterLang: "go",
+			wantMatch:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchesLanguage(tt.snippet, tt.filterLang)
+			if got != tt.wantMatch {
+				t.Errorf("matchesLanguage() = %v, want %v", got, tt.wantMatch)
+			}
+		})
+	}
+}
+
+func TestManager_SearchWithFilters(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Setup test config
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	// Setup test snippets with tags and languages
+	snippets := []*Snippet{
+		{
+			ID:       "id-1",
+			Title:    "Go Web Server",
+			Tags:     []string{"go", "web"},
+			Language: "go",
+			Body:     "Building web servers in Go",
+		},
+		{
+			ID:       "id-2",
+			Title:    "Python Script",
+			Tags:     []string{"python", "automation"},
+			Language: "python",
+			Body:     "Automation script in Python",
+		},
+		{
+			ID:       "id-3",
+			Title:    "Bash Deploy",
+			Tags:     []string{"bash", "devops", "deploy"},
+			Language: "bash",
+			Body:     "Deployment script using bash",
+		},
+		{
+			ID:       "id-4",
+			Title:    "Go API",
+			Tags:     []string{"go", "api"},
+			Language: "go",
+			Body:     "REST API in Go",
+		},
+		{
+			ID:       "id-5",
+			Title:    "Docker Setup",
+			Tags:     []string{"docker", "devops"},
+			Language: "bash",
+			Body:     "Docker configuration",
+		},
+	}
+
+	// Save all snippets
+	for _, s := range snippets {
+		if err := m.Save(s); err != nil {
+			t.Fatalf("Failed to save snippet: %v", err)
+		}
+	}
+
+	tests := []struct {
+		name      string
+		opts      SearchOptions
+		wantCount int
+		wantIDs   []string
+	}{
+		{
+			name:      "no filters or query returns all",
+			opts:      SearchOptions{},
+			wantCount: 5,
+		},
+		{
+			name:      "filter by single tag",
+			opts:      SearchOptions{Tags: []string{"go"}},
+			wantCount: 2,
+			wantIDs:   []string{"id-1", "id-4"},
+		},
+		{
+			name:      "filter by multiple tags (AND logic)",
+			opts:      SearchOptions{Tags: []string{"go", "web"}},
+			wantCount: 1,
+			wantIDs:   []string{"id-1"},
+		},
+		{
+			name:      "filter by language",
+			opts:      SearchOptions{Language: "bash"},
+			wantCount: 2,
+			wantIDs:   []string{"id-3", "id-5"},
+		},
+		{
+			name:      "filter by language case insensitive",
+			opts:      SearchOptions{Language: "Python"},
+			wantCount: 1,
+			wantIDs:   []string{"id-2"},
+		},
+		{
+			name:      "combined tag and language filters",
+			opts:      SearchOptions{Tags: []string{"devops"}, Language: "bash"},
+			wantCount: 2,
+			wantIDs:   []string{"id-3", "id-5"},
+		},
+		{
+			name:      "query only (no filters)",
+			opts:      SearchOptions{Query: "Go"},
+			wantCount: 2,
+			wantIDs:   []string{"id-1", "id-4"},
+		},
+		{
+			name:      "query with tag filter",
+			opts:      SearchOptions{Query: "API", Tags: []string{"go"}},
+			wantCount: 1,
+			wantIDs:   []string{"id-4"},
+		},
+		{
+			name: "query with language filter",
+			opts: SearchOptions{Query: "deploy", Language: "bash"},
+			wantCount: 1,
+			wantIDs:   []string{"id-3"},
+		},
+		{
+			name: "all filters combined",
+			opts: SearchOptions{
+				Query:    "deploy",
+				Tags:     []string{"devops"},
+				Language: "bash",
+			},
+			wantCount: 1,
+			wantIDs:   []string{"id-3"},
+		},
+		{
+			name:      "no matches - tag filter",
+			opts:      SearchOptions{Tags: []string{"nonexistent"}},
+			wantCount: 0,
+		},
+		{
+			name:      "no matches - language filter",
+			opts:      SearchOptions{Language: "ruby"},
+			wantCount: 0,
+		},
+		{
+			name:      "no matches - filters with query",
+			opts:      SearchOptions{Query: "test", Tags: []string{"go"}, Language: "python"},
+			wantCount: 0,
+		},
+		{
+			name:      "tag filter case insensitive",
+			opts:      SearchOptions{Tags: []string{"Go", "Web"}},
+			wantCount: 1,
+			wantIDs:   []string{"id-1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			results := m.SearchWithFilters(tt.opts)
+
+			if len(results) != tt.wantCount {
+				t.Errorf("SearchWithFilters() returned %d results, want %d", len(results), tt.wantCount)
+				return
+			}
+
+			// Check that all expected IDs are present
+			if len(tt.wantIDs) > 0 {
+				resultIDs := make(map[string]bool)
+				for _, result := range results {
+					resultIDs[result.Snippet.ID] = true
+				}
+
+				for _, wantID := range tt.wantIDs {
+					if !resultIDs[wantID] {
+						t.Errorf("SearchWithFilters() missing expected ID: %s", wantID)
+					}
+				}
+			}
+
+			// Verify empty query with filters returns score 0
+			if tt.opts.Query == "" && len(results) > 0 {
+				for _, result := range results {
+					if result.Score != 0 {
+						t.Errorf("SearchWithFilters() with empty query, result score = %d, want 0", result.Score)
+					}
+				}
+			}
+
+			// Verify results are copies (not references)
+			if len(results) > 0 {
+				originalTags := len(results[0].Snippet.Tags)
+				results[0].Snippet.Tags = append(results[0].Snippet.Tags, "new-tag")
+				// Reload to check original wasn't modified
+				m.LoadAll()
+				reloaded, _ := m.GetByID(results[0].Snippet.ID)
+				if len(reloaded.Tags) != originalTags {
+					t.Error("SearchWithFilters() returned references, not copies")
+				}
+			}
+		})
+	}
+}
+
