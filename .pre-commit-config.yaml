@@ -1,0 +1,33 @@
+repos:
+  # Go hooks
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
+      - id: go-vet
+
+  # TypeScript/JavaScript hooks
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: \.(ts|tsx)$
+        types: [file]
+        args: ['--fix', '--config', 'frontend/.eslintrc.json']
+        additional_dependencies:
+          - eslint@8.57.0
+          - '@typescript-eslint/eslint-plugin@7.0.0'
+          - '@typescript-eslint/parser@7.0.0'
+          - eslint-plugin-react@7.34.0
+          - eslint-plugin-react-hooks@4.6.0
+          - typescript@5.5.4
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
