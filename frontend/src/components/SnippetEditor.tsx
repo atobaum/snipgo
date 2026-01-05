@@ -197,29 +197,6 @@ export function SnippetEditor({
     saveTagsAndFavorite(tags, newFavorite); // 즉시 저장
   };
 
-  const handleSave = async () => {
-    if (!snippet) return;
-
-    try {
-      const updatedSnippet: Snippet = {
-        ...snippet,
-        title,
-        tags,
-        language,
-        is_favorite: isFavorite,
-        body,
-      };
-      await app.SaveSnippet(updatedSnippet);
-      await app.ReloadSnippets();
-      onSave(updatedSnippet);
-    } catch (err) {
-      alert(
-        "Failed to save snippet: " +
-          (err instanceof Error ? err.message : "Unknown error")
-      );
-    }
-  };
-
   const handleDelete = async () => {
     if (!snippet) return;
 

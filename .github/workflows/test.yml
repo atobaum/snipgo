@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test-go:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -15,23 +15,6 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-
-      - name: Create frontend/dist directory for embed
-        run: mkdir -p frontend/dist && touch frontend/dist/.gitkeep
-
-      - name: Run tests
-        run: go test -v -race ./...
-
-      - name: Run go vet
-        run: go vet ./...
-
-  test-frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
@@ -41,14 +24,33 @@ jobs:
         with:
           version: 10
 
-      - name: Install dependencies
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Generate Wails bindings
+        run: wails generate module
+
+      - name: Create frontend/dist directory for embed
+        run: mkdir -p frontend/dist && touch frontend/dist/.gitkeep
+
+      - name: Run Go tests
+        run: go test -v -race ./...
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Install frontend dependencies
+        working-directory: frontend
         run: pnpm install
 
       - name: Type check
+        working-directory: frontend
         run: pnpm type-check
 
       - name: Lint
+        working-directory: frontend
         run: pnpm lint
 
       - name: Test
+        working-directory: frontend
         run: pnpm test
