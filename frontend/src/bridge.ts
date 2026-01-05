@@ -44,6 +44,12 @@ export interface App {
   SearchSnippets(query: string): Promise<Snippet[]>;
   CopyToClipboard(text: string): Promise<void>;
   ReloadSnippets(): Promise<void>;
+  GetAllTags(): Promise<string[]>;
+  // Settings
+  GetConfigPath(): Promise<string>;
+  GetDataDirectory(): Promise<string>;
+  SetDataDirectory(path: string): Promise<void>;
+  BrowseForDirectory(): Promise<string>;
 }
 
 // Use Wails generated bindings with type conversion
@@ -66,4 +72,10 @@ export const app: App = {
   },
   CopyToClipboard: WailsApp.CopyToClipboard,
   ReloadSnippets: WailsApp.ReloadSnippets,
+  GetAllTags: WailsApp.GetAllTags,
+  // Settings
+  GetConfigPath: WailsApp.GetConfigPath,
+  GetDataDirectory: WailsApp.GetDataDirectory,
+  SetDataDirectory: WailsApp.SetDataDirectory,
+  BrowseForDirectory: WailsApp.BrowseForDirectory,
 };

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -207,4 +208,25 @@ func copySnippet(s *Snippet) *Snippet {
 		UpdatedAt:  s.UpdatedAt,
 		Body:       s.Body,
 	}
+}
+
+// GetAllTags returns all unique tags across all snippets, sorted alphabetically
+func (m *Manager) GetAllTags() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	tagSet := make(map[string]bool)
+	for _, snippet := range m.snippets {
+		for _, tag := range snippet.Tags {
+			tagSet[tag] = true
+		}
+	}
+
+	tags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		tags = append(tags, tag)
+	}
+
+	sort.Strings(tags)
+	return tags
 }
