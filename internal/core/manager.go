@@ -82,6 +82,9 @@ func (m *Manager) Save(snippet *Snippet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Check if snippet already exists on disk
+	existingFilePath := m.findFileBySnippetID(snippet.ID)
+
 	// Update timestamp
 	snippet.UpdateTimestamp()
 
@@ -91,12 +94,17 @@ func (m *Manager) Save(snippet *Snippet) error {
 		return fmt.Errorf("failed to serialize snippet: %w", err)
 	}
 
-	// Generate filename: {Title}_{Timestamp}.md
-	filename := generateFilename(snippet)
-	filepath := filepath.Join(m.storage.GetSnippetsDir(), filename)
+	// Use existing file path if updating, otherwise generate new filename
+	var filePath string
+	if existingFilePath != "" {
+		filePath = existingFilePath
+	} else {
+		filename := generateFilename(snippet)
+		filePath = filepath.Join(m.storage.GetSnippetsDir(), filename)
+	}
 
 	// Write to disk
-	if err := m.storage.WriteFile(filepath, content); err != nil {
+	if err := m.storage.WriteFile(filePath, content); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -116,27 +124,10 @@ func (m *Manager) Delete(id string) error {
 	}
 
 	// Find and delete the file
-	files, err := m.storage.ListFiles()
-	if err != nil {
-		return fmt.Errorf("failed to list files: %w", err)
-	}
-
-	for _, filepath := range files {
-		content, err := m.storage.ReadFile(filepath)
-		if err != nil {
-			continue
-		}
-
-		fileSnippet, err := ParseFrontmatter(content)
-		if err != nil {
-			continue
-		}
-
-		if fileSnippet.ID == id {
-			if err := m.storage.DeleteFile(filepath); err != nil {
-				return fmt.Errorf("failed to delete file: %w", err)
-			}
-			break
+	filePath := m.findFileBySnippetID(id)
+	if filePath != "" {
+		if err := m.storage.DeleteFile(filePath); err != nil {
+			return fmt.Errorf("failed to delete file: %w", err)
 		}
 	}
 
@@ -171,6 +162,33 @@ func (m *Manager) GetAll() []*Snippet {
 	}
 
 	return snippets
+}
+
+// findFileBySnippetID finds the file path for a snippet with the given ID.
+// Returns empty string if not found.
+func (m *Manager) findFileBySnippetID(id string) string {
+	files, err := m.storage.ListFiles()
+	if err != nil {
+		return ""
+	}
+
+	for _, fp := range files {
+		content, err := m.storage.ReadFile(fp)
+		if err != nil {
+			continue
+		}
+
+		fileSnippet, err := ParseFrontmatter(content)
+		if err != nil {
+			continue
+		}
+
+		if fileSnippet.ID == id {
+			return fp
+		}
+	}
+
+	return ""
 }
 
 // generateFilename generates a filename for a snippet
