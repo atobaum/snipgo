@@ -37,6 +37,27 @@ This is the body content.`),
 			wantErr: false,
 		},
 		{
+			name: "valid frontmatter with description",
+			content: []byte(`---
+id: test-id
+title: Test Title
+description: A short description
+tags:
+  - tag1
+language: go
+---
+Body content.`),
+			want: &Snippet{
+				ID:          "test-id",
+				Title:       "Test Title",
+				Description: "A short description",
+				Tags:        []string{"tag1"},
+				Language:    "go",
+				Body:        "Body content.",
+			},
+			wantErr: false,
+		},
+		{
 			name: "valid frontmatter with empty body",
 			content: []byte(`---
 id: test-id
@@ -168,6 +189,10 @@ Body`),
 
 			if got.Title != tt.want.Title {
 				t.Errorf("ParseFrontmatter() Title = %v, want %v", got.Title, tt.want.Title)
+			}
+
+			if got.Description != tt.want.Description {
+				t.Errorf("ParseFrontmatter() Description = %v, want %v", got.Description, tt.want.Description)
 			}
 
 			if len(got.Tags) != len(tt.want.Tags) {

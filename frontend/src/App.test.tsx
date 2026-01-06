@@ -8,6 +8,7 @@ const mockSnippets: Snippet[] = [
   {
     id: '1',
     title: 'First Snippet',
+    description: '',
     tags: ['tag1'],
     language: 'javascript',
     is_favorite: false,
@@ -18,6 +19,7 @@ const mockSnippets: Snippet[] = [
   {
     id: '2',
     title: 'Second Snippet',
+    description: '',
     tags: ['tag2'],
     language: 'python',
     is_favorite: false,

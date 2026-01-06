@@ -97,7 +97,7 @@ func (m *Manager) SearchWithFilters(opts SearchOptions) []*SearchResult {
 		titleMatches[snippet.ID] = true
 	}
 
-	// Substring matching on tags and body for candidates not already matched
+	// Substring matching on tags, description, and body for candidates not already matched
 	for _, snippet := range candidates {
 		if titleMatches[snippet.ID] {
 			continue // Already matched by title
@@ -111,6 +111,11 @@ func (m *Manager) SearchWithFilters(opts SearchOptions) []*SearchResult {
 				score += 10
 				break
 			}
+		}
+
+		// Check description
+		if strings.Contains(strings.ToLower(snippet.Description), queryLower) {
+			score += 5
 		}
 
 		// Check body

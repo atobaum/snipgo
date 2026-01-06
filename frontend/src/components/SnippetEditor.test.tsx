@@ -35,6 +35,7 @@ vi.mock("@uiw/react-codemirror", () => ({
 const mockSnippet: Snippet = {
   id: "test-id",
   title: "Test Snippet",
+  description: "",
   tags: ["tag1", "tag2"],
   language: "javascript",
   is_favorite: false,

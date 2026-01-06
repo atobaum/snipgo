@@ -1,6 +1,7 @@
 export interface Snippet {
   id: string;
   title: string;
+  description: string;
   tags: string[];
   language: string;
   is_favorite: boolean;

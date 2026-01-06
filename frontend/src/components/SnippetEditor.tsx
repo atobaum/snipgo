@@ -37,6 +37,7 @@ export function SnippetEditor({
   onListRefresh,
 }: SnippetEditorProps) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [language, setLanguage] = useState("");
@@ -53,15 +54,16 @@ export function SnippetEditor({
   // 현재 스니펫 참조 (auto-save 콜백에서 사용)
   const snippetRef = useRef(snippet);
 
-  // isDirty 계산 (title, body, language만 - tag/favorite는 즉시 저장됨)
+  // isDirty 계산 (title, description, body, language만 - tag/favorite는 즉시 저장됨)
   const isDirty = useMemo(() => {
     if (!snippet) return false;
     return (
       title !== snippet.title ||
+      description !== snippet.description ||
       body !== snippet.body ||
       language !== snippet.language
     );
-  }, [snippet, title, body, language]);
+  }, [snippet, title, description, body, language]);
 
   // isDirty 변경 시 부모에게 알림
   useEffect(() => {
@@ -83,6 +85,7 @@ export function SnippetEditor({
       const updatedSnippet: Snippet = {
         ...currentSnippet,
         title,
+        description,
         tags,
         language,
         is_favorite: isFavorite,
@@ -99,7 +102,7 @@ export function SnippetEditor({
       console.error("Auto-save failed:", err);
       setSaveStatus(null);
     }
-  }, [title, tags, language, isFavorite, body, onSave]);
+  }, [title, description, tags, language, isFavorite, body, onSave]);
 
   // Debounced save 훅
   const { debouncedSave, cancelPendingSave, flushSave } = useDebouncedSave(
@@ -113,7 +116,7 @@ export function SnippetEditor({
       setSaveStatus("pending");
       debouncedSave();
     }
-  }, [isDirty, title, body, language, debouncedSave]);
+  }, [isDirty, title, description, body, language, debouncedSave]);
 
   // 컴포넌트 언마운트 시 flush
   useEffect(() => {
@@ -130,6 +133,7 @@ export function SnippetEditor({
 
     if (snippet) {
       setTitle(snippet.title);
+      setDescription(snippet.description || "");
       setTags([...snippet.tags]);
       setTagInput(""); // tagInput 초기화
       setLanguage(snippet.language);
@@ -138,6 +142,7 @@ export function SnippetEditor({
       setSaveStatus(null);
     } else {
       setTitle("");
+      setDescription("");
       setTags([]);
       setTagInput("");
       setLanguage("");
@@ -234,6 +239,7 @@ export function SnippetEditor({
       const frontmatter = `---
 id: "${snippet?.id || ""}"
 title: "${title}"
+description: "${description}"
 tags: [${tags.map((t) => `"${t}"`).join(", ")}]
 language: "${language}"
 is_favorite: ${isFavorite}
@@ -269,7 +275,7 @@ ${body}`;
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center flex-1 gap-2">
             <input
               type="text"
@@ -312,6 +318,17 @@ ${body}`;
               {rawMode ? "Form Mode" : "Raw Mode"}
             </button>
           </div>
+        </div>
+
+        {/* Description */}
+        <div className="mb-2">
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full px-2 py-1 text-sm text-gray-600 border-none outline-none focus:ring-2 focus:ring-blue-500 rounded"
+          />
         </div>
 
         {/* Tags */}
