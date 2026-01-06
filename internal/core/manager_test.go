@@ -631,6 +631,123 @@ func TestGenerateFilename(t *testing.T) {
 	}
 }
 
+func TestManager_Save_Update(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	// Create initial snippet
+	snippet := &Snippet{
+		ID:    "test-update-id",
+		Title: "Original Title",
+		Body:  "Original body",
+	}
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Failed to save initial snippet: %v", err)
+	}
+
+	// Count files after initial save
+	filesAfterCreate, _ := m.storage.ListFiles()
+	initialCount := len(filesAfterCreate)
+
+	// Wait a moment to ensure different timestamp
+	time.Sleep(10 * time.Millisecond)
+
+	// Update the snippet (simulating edit)
+	snippet.Title = "Updated Title"
+	snippet.Body = "Updated body"
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Failed to save updated snippet: %v", err)
+	}
+
+	// Count files after update - should be same as initial (reusing file)
+	filesAfterUpdate, _ := m.storage.ListFiles()
+	if len(filesAfterUpdate) != initialCount {
+		t.Errorf("File count changed after update: got %d, want %d", len(filesAfterUpdate), initialCount)
+	}
+
+	// Verify the updated content is on disk
+	found := false
+	for _, file := range filesAfterUpdate {
+		content, err := m.storage.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		fileSnippet, err := ParseFrontmatter(content)
+		if err != nil {
+			continue
+		}
+		if fileSnippet.ID == "test-update-id" {
+			found = true
+			if fileSnippet.Title != "Updated Title" {
+				t.Errorf("Title not updated: got %v, want %v", fileSnippet.Title, "Updated Title")
+			}
+			if fileSnippet.Body != "Updated body" {
+				t.Errorf("Body not updated: got %v, want %v", fileSnippet.Body, "Updated body")
+			}
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Updated snippet not found on disk")
+	}
+}
+
+func TestManager_findFileBySnippetID(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	// Test with no snippets
+	path := m.findFileBySnippetID("non-existent")
+	if path != "" {
+		t.Errorf("Expected empty path for non-existent snippet, got %v", path)
+	}
+
+	// Save a snippet
+	snippet := &Snippet{
+		ID:    "test-find-id",
+		Title: "Test Snippet",
+		Body:  "Body",
+	}
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Failed to save snippet: %v", err)
+	}
+
+	// Test finding the snippet
+	path = m.findFileBySnippetID("test-find-id")
+	if path == "" {
+		t.Error("Expected non-empty path for existing snippet")
+	}
+}
+
 func TestCopySnippet(t *testing.T) {
 	original := &Snippet{
 		ID:         "test-id",
