@@ -118,17 +118,22 @@ describe("SnippetEditor", () => {
       render(<SnippetEditor {...defaultProps} />);
 
       const languageInput = screen.getByDisplayValue("javascript");
+      await user.click(languageInput);
       await user.clear(languageInput);
-      await user.type(languageInput, "python");
+      await user.type(languageInput, "python{Enter}");
 
-      expect(screen.getByText("Unsaved")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Unsaved")).toBeInTheDocument();
+      });
     });
 
     it("tag 변경은 isDirty에 영향을 주지 않는다 (즉시 저장되므로)", async () => {
       const user = userEvent.setup();
       render(<SnippetEditor {...defaultProps} />);
 
-      const tagInput = screen.getByPlaceholderText("Add tag...");
+      // 태그 입력 필드 찾기 (tag-input-container 내 input)
+      const tagInputContainer = document.querySelector(".tag-input-container");
+      const tagInput = tagInputContainer?.querySelector("input") as HTMLInputElement;
       await user.type(tagInput, "newtag{enter}");
 
       // 수정됨 표시가 나타나지 않아야 함
@@ -142,7 +147,8 @@ describe("SnippetEditor", () => {
       const { rerender } = render(<SnippetEditor {...defaultProps} />);
 
       // 태그 입력 중
-      const tagInput = screen.getByPlaceholderText("Add tag...");
+      const tagInputContainer = document.querySelector(".tag-input-container");
+      const tagInput = tagInputContainer?.querySelector("input") as HTMLInputElement;
       await user.type(tagInput, "typing...");
       expect(tagInput).toHaveValue("typing...");
 
@@ -151,7 +157,8 @@ describe("SnippetEditor", () => {
       rerender(<SnippetEditor {...defaultProps} snippet={newSnippet} />);
 
       // tagInput이 초기화되어야 함
-      expect(screen.getByPlaceholderText("Add tag...")).toHaveValue("");
+      const newTagInput = document.querySelector(".tag-input-container input") as HTMLInputElement;
+      expect(newTagInput).toHaveValue("");
     });
   });
 
@@ -161,7 +168,8 @@ describe("SnippetEditor", () => {
       const user = userEvent.setup();
       render(<SnippetEditor {...defaultProps} />);
 
-      const tagInput = screen.getByPlaceholderText("Add tag...");
+      const tagInputContainer = document.querySelector(".tag-input-container");
+      const tagInput = tagInputContainer?.querySelector("input") as HTMLInputElement;
       await user.type(tagInput, "newtag{enter}");
 
       await waitFor(() => {
@@ -176,9 +184,12 @@ describe("SnippetEditor", () => {
       const user = userEvent.setup();
       render(<SnippetEditor {...defaultProps} />);
 
-      // tag1 삭제 버튼 클릭
-      const removeButtons = screen.getAllByText("×");
-      await user.click(removeButtons[0]);
+      // tag1 삭제 버튼 클릭 (SVG 아이콘 버튼)
+      const tagInputContainer = document.querySelector(".tag-input-container");
+      const removeButtons = tagInputContainer?.querySelectorAll("button");
+      if (removeButtons && removeButtons.length > 0) {
+        await user.click(removeButtons[0]);
+      }
 
       await waitFor(() => {
         expect(app.SaveSnippet).toHaveBeenCalled();

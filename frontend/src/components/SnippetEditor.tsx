@@ -29,6 +29,25 @@ const languageExtensions: Record<string, Extension> = {
   markdown: markdown(),
 };
 
+const SUPPORTED_LANGUAGES = [
+  "plaintext",
+  "javascript",
+  "typescript",
+  "python",
+  "yaml",
+  "json",
+  "markdown",
+  "bash",
+  "go",
+  "rust",
+  "java",
+  "cpp",
+  "c",
+  "html",
+  "css",
+  "sql",
+];
+
 export function SnippetEditor({
   snippet,
   onSave,
@@ -49,6 +68,13 @@ export function SnippetEditor({
     "saved" | "saving" | "pending" | null
   >(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // Tag autocomplete
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
+  // Language selector
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [languageFilter, setLanguageFilter] = useState("");
 
   // 스니펫 로딩 중인지 추적 (로딩 중에는 auto-save 방지)
   const isLoadingSnippetRef = useRef(false);
@@ -66,10 +92,41 @@ export function SnippetEditor({
     );
   }, [snippet, title, description, body, language]);
 
+  // 필터링된 태그 제안
+  const filteredTagSuggestions = useMemo(() => {
+    if (!tagInput.trim()) return [];
+    const lower = tagInput.toLowerCase();
+    return allTags
+      .filter((tag) => tag.toLowerCase().includes(lower) && !tags.includes(tag))
+      .slice(0, 5);
+  }, [tagInput, allTags, tags]);
+
+  // 필터링된 언어 목록
+  const filteredLanguages = useMemo(() => {
+    if (!languageFilter) return SUPPORTED_LANGUAGES;
+    const lower = languageFilter.toLowerCase();
+    return SUPPORTED_LANGUAGES.filter((lang) =>
+      lang.toLowerCase().includes(lower)
+    );
+  }, [languageFilter]);
+
   // isDirty 변경 시 부모에게 알림
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
+
+  // 모든 태그 로드
+  useEffect(() => {
+    const loadAllTags = async () => {
+      try {
+        const result = await app.GetAllTags();
+        setAllTags(result);
+      } catch (err) {
+        console.error("Failed to load tags:", err);
+      }
+    };
+    loadAllTags();
+  }, []);
 
   // snippetRef 업데이트
   useEffect(() => {
@@ -129,13 +186,25 @@ export function SnippetEditor({
   // 외부 클릭 시 메뉴 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (showMoreMenu && !(e.target as Element).closest('.more-menu')) {
+      if (showMoreMenu && !(e.target as Element).closest(".more-menu")) {
         setShowMoreMenu(false);
       }
+      if (
+        showTagSuggestions &&
+        !(e.target as Element).closest(".tag-input-container")
+      ) {
+        setShowTagSuggestions(false);
+      }
+      if (
+        showLanguageDropdown &&
+        !(e.target as Element).closest(".language-selector")
+      ) {
+        setShowLanguageDropdown(false);
+      }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [showMoreMenu]);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showMoreMenu, showTagSuggestions, showLanguageDropdown]);
 
   // 스니펫 전환 시 상태 초기화
   useEffect(() => {
@@ -147,20 +216,26 @@ export function SnippetEditor({
       setTitle(snippet.title);
       setDescription(snippet.description || "");
       setTags([...snippet.tags]);
-      setTagInput(""); // tagInput 초기화
+      setTagInput("");
       setLanguage(snippet.language);
+      setLanguageFilter("");
       setIsFavorite(snippet.is_favorite);
       setBody(snippet.body);
       setSaveStatus(null);
+      setShowTagSuggestions(false);
+      setShowLanguageDropdown(false);
     } else {
       setTitle("");
       setDescription("");
       setTags([]);
       setTagInput("");
       setLanguage("");
+      setLanguageFilter("");
       setIsFavorite(false);
       setBody("");
       setSaveStatus(null);
+      setShowTagSuggestions(false);
+      setShowLanguageDropdown(false);
     }
 
     // 상태 업데이트 후 로딩 플래그 해제
@@ -343,58 +418,169 @@ ${body}`;
           />
         </div>
 
-        {/* Tags */}
-        <div className="mb-2">
-          <div className="flex flex-wrap gap-2 items-center">
+        {/* Tags - Compact Inline Design with Autocomplete */}
+        <div className="mb-2 relative tag-input-container">
+          <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border border-gray-200 rounded bg-gray-50 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
             {tags.map((tag, idx) => (
               <span
                 key={idx}
-                className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm flex items-center gap-1"
+                className="inline-flex items-center px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs group"
               >
                 {tag}
                 <button
                   onClick={() => handleRemoveTag(tag)}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="ml-0.5 text-blue-500 hover:text-blue-700 opacity-60 group-hover:opacity-100"
                 >
-                  ×
+                  <svg
+                    className="w-3 h-3"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </button>
               </span>
             ))}
             <input
+              ref={tagInputRef}
               type="text"
               value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => {
+              onChange={(e) => {
+                setTagInput(e.target.value);
+                setShowTagSuggestions(true);
+              }}
+              onFocus={() => setShowTagSuggestions(true)}
+              onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  handleAddTag();
+                  if (filteredTagSuggestions.length > 0) {
+                    const newTags = [...tags, filteredTagSuggestions[0]];
+                    setTags(newTags);
+                    setTagInput("");
+                    saveTagsAndFavorite(newTags, isFavorite);
+                  } else {
+                    handleAddTag();
+                  }
+                  setShowTagSuggestions(false);
+                } else if (e.key === "Escape") {
+                  setShowTagSuggestions(false);
+                } else if (
+                  e.key === "Backspace" &&
+                  tagInput === "" &&
+                  tags.length > 0
+                ) {
+                  handleRemoveTag(tags[tags.length - 1]);
                 }
               }}
-              placeholder="Add tag..."
-              className="px-2 py-1 border border-gray-300 rounded text-sm"
+              placeholder={tags.length === 0 ? "Add tags..." : ""}
+              className="flex-1 min-w-[60px] px-1 py-0.5 bg-transparent border-none outline-none text-xs placeholder-gray-400"
             />
           </div>
+          {/* Tag Suggestions Dropdown */}
+          {showTagSuggestions && filteredTagSuggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 max-h-32 overflow-y-auto">
+              {filteredTagSuggestions.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    const newTags = [...tags, tag];
+                    setTags(newTags);
+                    setTagInput("");
+                    saveTagsAndFavorite(newTags, isFavorite);
+                    setShowTagSuggestions(false);
+                    tagInputRef.current?.focus();
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 text-gray-700"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Meta Info */}
         <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div>
+          <div className="relative language-selector">
             <label className="mr-2">Language:</label>
             <input
               type="text"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              placeholder="e.g., javascript, python"
-              className="px-2 py-1 border border-gray-300 rounded"
+              value={showLanguageDropdown ? languageFilter : language}
+              onChange={(e) => {
+                setLanguageFilter(e.target.value);
+                if (!showLanguageDropdown) setShowLanguageDropdown(true);
+              }}
+              onFocus={() => {
+                setLanguageFilter(language);
+                setShowLanguageDropdown(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setShowLanguageDropdown(false);
+                  setLanguageFilter("");
+                } else if (e.key === "Enter" && filteredLanguages.length > 0) {
+                  e.preventDefault();
+                  setLanguage(filteredLanguages[0]);
+                  setShowLanguageDropdown(false);
+                  setLanguageFilter("");
+                }
+              }}
+              placeholder="Select..."
+              className="px-2 py-1 border border-gray-300 rounded w-32 text-xs"
             />
+            {showLanguageDropdown && (
+              <div className="absolute left-16 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 max-h-48 overflow-y-auto min-w-[140px]">
+                {filteredLanguages.length > 0 ? (
+                  filteredLanguages.map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        setLanguage(lang);
+                        setShowLanguageDropdown(false);
+                        setLanguageFilter("");
+                      }}
+                      className={`w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 ${
+                        language === lang
+                          ? "bg-blue-100 text-blue-800"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {lang}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-xs text-gray-500">
+                    Press Enter to use &quot;{languageFilter}&quot;
+                  </div>
+                )}
+                {languageFilter &&
+                  !filteredLanguages.includes(languageFilter.toLowerCase()) &&
+                  filteredLanguages.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setLanguage(languageFilter);
+                        setShowLanguageDropdown(false);
+                        setLanguageFilter("");
+                      }}
+                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 text-blue-600 border-t border-gray-100"
+                    >
+                      Use &quot;{languageFilter}&quot;
+                    </button>
+                  )}
+              </div>
+            )}
           </div>
           <div>
-            <span className="text-gray-500">
+            <span className="text-gray-500 text-xs">
               Created: {new Date(snippet.created_at).toLocaleDateString()}
             </span>
           </div>
           <div>
-            <span className="text-gray-500">
+            <span className="text-gray-500 text-xs">
               Updated: {new Date(snippet.updated_at).toLocaleDateString()}
             </span>
           </div>

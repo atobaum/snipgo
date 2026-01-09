@@ -39,29 +39,29 @@ export function TagList({
   }
 
   return (
-    <div className="border-b border-gray-200 pb-4 mb-2">
-      <div className="flex items-center justify-between px-4 py-2">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <div className="border-b border-gray-100 pb-2 mb-1">
+      <div className="flex items-center justify-between px-3 py-1">
+        <h2 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
           Tags
         </h2>
         {selectedTag && (
           <button
             onClick={() => onSelectTag(null)}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            className="text-[10px] text-gray-400 hover:text-gray-600"
           >
             Clear
           </button>
         )}
       </div>
-      <div className="px-4 flex flex-wrap gap-2">
+      <div className="px-3 flex flex-wrap gap-1">
         {tags.map((tag) => (
           <button
             key={tag}
             onClick={() => onSelectTag(selectedTag === tag ? null : tag)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
+            className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
               selectedTag === tag
                 ? "bg-blue-500 text-white"
-                : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
             }`}
           >
             {tag}
