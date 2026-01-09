@@ -103,7 +103,7 @@ Body content`),
 			wantErr: false,
 		},
 		{
-			name:    "no frontmatter delimiter",
+			name: "no frontmatter delimiter",
 			content: []byte(`id: test-id
 title: Test Title`),
 			want:    nil,
@@ -116,7 +116,7 @@ title: Test Title`),
 			wantErr: true,
 		},
 		{
-			name:    "frontmatter not closed",
+			name: "frontmatter not closed",
 			content: []byte(`---
 id: test-id
 title: Test Title`),
@@ -363,4 +363,3 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
-

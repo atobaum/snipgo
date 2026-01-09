@@ -58,5 +58,3 @@ func runNew(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Snippet saved: %s\n", snippet.Title)
 	return nil
 }
-
-

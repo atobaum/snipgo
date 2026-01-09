@@ -132,3 +132,12 @@ func (a *App) BrowseForDirectory() (string, error) {
 		Title: "Select Snippets Directory",
 	})
 }
+
+// CreateSnippet creates a new snippet with the given title
+func (a *App) CreateSnippet(title string) (*core.Snippet, error) {
+	snippet := core.NewSnippet(title)
+	if err := a.manager.Save(snippet); err != nil {
+		return nil, err
+	}
+	return snippet, nil
+}

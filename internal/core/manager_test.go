@@ -11,21 +11,21 @@ import (
 // Returns cleanup function and error
 func setupTestConfig(tmpDir string) (func(), error) {
 	originalEnv := os.Getenv("SNIPGO_CONFIG_PATH")
-	
+
 	// Create temporary config file
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	content := "data_directory: " + tmpDir + "\n"
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		return nil, err
 	}
-	
+
 	os.Setenv("SNIPGO_CONFIG_PATH", configPath)
-	
+
 	cleanup := func() {
 		os.Setenv("SNIPGO_CONFIG_PATH", originalEnv)
 		os.Remove(configPath)
 	}
-	
+
 	return cleanup, nil
 }
 
@@ -82,9 +82,9 @@ func TestManager_LoadAll(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		setup   func() error
-		wantErr bool
+		name      string
+		setup     func() error
+		wantErr   bool
 		wantCount int
 	}{
 		{
@@ -92,7 +92,7 @@ func TestManager_LoadAll(t *testing.T) {
 			setup: func() error {
 				return nil
 			},
-			wantErr: false,
+			wantErr:   false,
 			wantCount: 0,
 		},
 		{
@@ -105,7 +105,7 @@ title: Test Snippet 1
 Body content`
 				return os.WriteFile(filepath.Join(tmpDir, "test1.md"), []byte(content), 0644)
 			},
-			wantErr: false,
+			wantErr:   false,
 			wantCount: 1,
 		},
 		{
@@ -138,7 +138,7 @@ Body 3`},
 				}
 				return nil
 			},
-			wantErr: false,
+			wantErr:   false,
 			wantCount: 3,
 		},
 		{
@@ -170,7 +170,7 @@ Body`
 				}
 				return nil
 			},
-			wantErr: false,
+			wantErr:   false,
 			wantCount: 1, // Only valid snippet should be loaded
 		},
 	}
@@ -813,5 +813,3 @@ func TestCopySnippet(t *testing.T) {
 		t.Error("copySnippet() returned same pointer")
 	}
 }
-
-

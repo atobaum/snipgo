@@ -47,6 +47,7 @@ export interface App {
   CopyToClipboard(text: string): Promise<void>;
   ReloadSnippets(): Promise<void>;
   GetAllTags(): Promise<string[]>;
+  CreateSnippet(title: string): Promise<Snippet>;
   // Settings
   GetConfigPath(): Promise<string>;
   GetDataDirectory(): Promise<string>;
@@ -75,6 +76,10 @@ export const app: App = {
   CopyToClipboard: WailsApp.CopyToClipboard,
   ReloadSnippets: WailsApp.ReloadSnippets,
   GetAllTags: WailsApp.GetAllTags,
+  CreateSnippet: async (title: string) => {
+    const result = await WailsApp.CreateSnippet(title);
+    return convertSnippet(result);
+  },
   // Settings
   GetConfigPath: WailsApp.GetConfigPath,
   GetDataDirectory: WailsApp.GetDataDirectory,

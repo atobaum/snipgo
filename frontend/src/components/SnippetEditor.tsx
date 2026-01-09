@@ -48,6 +48,7 @@ export function SnippetEditor({
   const [saveStatus, setSaveStatus] = useState<
     "saved" | "saving" | "pending" | null
   >(null);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // 스니펫 로딩 중인지 추적 (로딩 중에는 auto-save 방지)
   const isLoadingSnippetRef = useRef(false);
@@ -124,6 +125,17 @@ export function SnippetEditor({
       flushSave();
     };
   }, [flushSave]);
+
+  // 외부 클릭 시 메뉴 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showMoreMenu && !(e.target as Element).closest('.more-menu')) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMoreMenu]);
 
   // 스니펫 전환 시 상태 초기화
   useEffect(() => {
@@ -396,12 +408,28 @@ ${body}`;
           >
             Copy to Clipboard
           </button>
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            Delete
-          </button>
+          <div className="relative more-menu">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="px-3 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+              title="More options"
+            >
+              &#8942;
+            </button>
+            {showMoreMenu && (
+              <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-[120px]">
+                <button
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    handleDelete();
+                  }}
+                  className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

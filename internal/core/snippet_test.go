@@ -96,9 +96,9 @@ func TestNewSnippet(t *testing.T) {
 
 func TestSnippet_Validate(t *testing.T) {
 	tests := []struct {
-		name    string
-		snippet *Snippet
-		wantErr bool
+		name     string
+		snippet  *Snippet
+		wantErr  bool
 		errField string
 	}{
 		{
@@ -216,9 +216,9 @@ func TestSnippet_UpdateTimestamp(t *testing.T) {
 
 func TestErrInvalidSnippet_Error(t *testing.T) {
 	tests := []struct {
-		name   string
-		err    ErrInvalidSnippet
-		want   string
+		name string
+		err  ErrInvalidSnippet
+		want string
 	}{
 		{
 			name: "ID error",
@@ -255,5 +255,3 @@ func TestErrInvalidSnippet_Error(t *testing.T) {
 		})
 	}
 }
-
-

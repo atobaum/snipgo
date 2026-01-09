@@ -102,4 +102,3 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	fmt.Print(selected.Body)
 	return nil
 }
-

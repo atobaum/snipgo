@@ -117,5 +117,3 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Snippet '%s' updated successfully\n", editedSnippet.Title)
 	return nil
 }
-
-

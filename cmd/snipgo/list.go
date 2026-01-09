@@ -49,4 +49,3 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	return w.Flush()
 }
-

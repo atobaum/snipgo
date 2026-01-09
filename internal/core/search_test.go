@@ -73,12 +73,12 @@ func TestManager_Search(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		query        string
-		wantCount    int
-		wantIDs      []string // Expected snippet IDs in result (order matters for score)
-		checkScores  bool
-		minScore     int // Minimum score for first result
+		name        string
+		query       string
+		wantCount   int
+		wantIDs     []string // Expected snippet IDs in result (order matters for score)
+		checkScores bool
+		minScore    int // Minimum score for first result
 	}{
 		{
 			name:        "empty query returns all snippets",
@@ -88,44 +88,44 @@ func TestManager_Search(t *testing.T) {
 			checkScores: false,
 		},
 		{
-			name:      "fuzzy search on title - exact match",
-			query:     "Go Programming",
-			wantCount: 1,
-			wantIDs:   []string{"id-1"},
+			name:        "fuzzy search on title - exact match",
+			query:       "Go Programming",
+			wantCount:   1,
+			wantIDs:     []string{"id-1"},
 			checkScores: true,
-			minScore:   1, // Fuzzy search gives positive score
+			minScore:    1, // Fuzzy search gives positive score
 		},
 		{
-			name:      "fuzzy search on title - partial match",
-			query:     "Go",
-			wantCount: 1,
-			wantIDs:   []string{"id-1"},
+			name:        "fuzzy search on title - partial match",
+			query:       "Go",
+			wantCount:   1,
+			wantIDs:     []string{"id-1"},
 			checkScores: true,
-			minScore:   1,
+			minScore:    1,
 		},
 		{
-			name:      "fuzzy search on title - case insensitive",
-			query:     "python",
-			wantCount: 1,
-			wantIDs:   []string{"id-2"},
+			name:        "fuzzy search on title - case insensitive",
+			query:       "python",
+			wantCount:   1,
+			wantIDs:     []string{"id-2"},
 			checkScores: true,
-			minScore:   1,
+			minScore:    1,
 		},
 		{
-			name:      "fuzzy search on title - typo tolerance",
-			query:     "Javascrpt", // Typo: missing 'i'
-			wantCount: 1,
-			wantIDs:   []string{"id-3"},
+			name:        "fuzzy search on title - typo tolerance",
+			query:       "Javascrpt", // Typo: missing 'i'
+			wantCount:   1,
+			wantIDs:     []string{"id-3"},
 			checkScores: true,
-			minScore:   1,
+			minScore:    1,
 		},
 		{
-			name:      "search by tag",
-			query:     "web",
-			wantCount: 2, // id-3 and id-5 have "web" tag
-			wantIDs:   []string{"id-3", "id-5"}, // Both should match
+			name:        "search by tag",
+			query:       "web",
+			wantCount:   2,                        // id-3 and id-5 have "web" tag
+			wantIDs:     []string{"id-3", "id-5"}, // Both should match
 			checkScores: true,
-			minScore:   10, // Tag match gives score 10
+			minScore:    10, // Tag match gives score 10
 		},
 		{
 			name:        "search by body",
@@ -144,43 +144,43 @@ func TestManager_Search(t *testing.T) {
 			minScore:    5, // Description match gives score 5
 		},
 		{
-			name:      "search by tag and body",
-			query:     "programming",
-			wantCount: 2, // id-1 (tag) and id-2 (body)
-			wantIDs:   []string{"id-1", "id-2"},
+			name:        "search by tag and body",
+			query:       "programming",
+			wantCount:   2, // id-1 (tag) and id-2 (body)
+			wantIDs:     []string{"id-1", "id-2"},
 			checkScores: true,
-			minScore:   5,
+			minScore:    5,
 		},
 		{
-			name:      "title match excludes from tag/body search",
-			query:     "Python",
-			wantCount: 1, // Only id-2, not id-1 (which has "programming" in body)
-			wantIDs:   []string{"id-2"},
+			name:        "title match excludes from tag/body search",
+			query:       "Python",
+			wantCount:   1, // Only id-2, not id-1 (which has "programming" in body)
+			wantIDs:     []string{"id-2"},
 			checkScores: true,
-			minScore:   1, // Title match
+			minScore:    1, // Title match
 		},
 		{
-			name:      "no matches",
-			query:     "nonexistent",
-			wantCount: 0,
-			wantIDs:   []string{},
+			name:        "no matches",
+			query:       "nonexistent",
+			wantCount:   0,
+			wantIDs:     []string{},
 			checkScores: false,
 		},
 		{
-			name:      "multiple tag matches",
-			query:     "web",
-			wantCount: 2,
-			wantIDs:   []string{"id-3", "id-5"},
+			name:        "multiple tag matches",
+			query:       "web",
+			wantCount:   2,
+			wantIDs:     []string{"id-3", "id-5"},
 			checkScores: true,
-			minScore:   10,
+			minScore:    10,
 		},
 		{
-			name:      "tag match with body match",
-			query:     "web",
-			wantCount: 2,
-			wantIDs:   []string{"id-3", "id-5"},
+			name:        "tag match with body match",
+			query:       "web",
+			wantCount:   2,
+			wantIDs:     []string{"id-3", "id-5"},
 			checkScores: true,
-			minScore:   10, // Tag match (10) is higher than body match (5)
+			minScore:    10, // Tag match (10) is higher than body match (5)
 		},
 	}
 
@@ -383,52 +383,52 @@ func TestManager_Search_TitleMatchExclusion(t *testing.T) {
 
 func TestMatchesTags(t *testing.T) {
 	tests := []struct {
-		name        string
-		snippet     *Snippet
-		filterTags  []string
-		wantMatch   bool
+		name       string
+		snippet    *Snippet
+		filterTags []string
+		wantMatch  bool
 	}{
 		{
-			name:        "empty filter matches all",
-			snippet:     &Snippet{Tags: []string{"go", "web"}},
-			filterTags:  []string{},
-			wantMatch:   true,
+			name:       "empty filter matches all",
+			snippet:    &Snippet{Tags: []string{"go", "web"}},
+			filterTags: []string{},
+			wantMatch:  true,
 		},
 		{
-			name:        "single tag match",
-			snippet:     &Snippet{Tags: []string{"go", "web"}},
-			filterTags:  []string{"go"},
-			wantMatch:   true,
+			name:       "single tag match",
+			snippet:    &Snippet{Tags: []string{"go", "web"}},
+			filterTags: []string{"go"},
+			wantMatch:  true,
 		},
 		{
-			name:        "multiple tags match (AND)",
-			snippet:     &Snippet{Tags: []string{"go", "web", "api"}},
-			filterTags:  []string{"go", "web"},
-			wantMatch:   true,
+			name:       "multiple tags match (AND)",
+			snippet:    &Snippet{Tags: []string{"go", "web", "api"}},
+			filterTags: []string{"go", "web"},
+			wantMatch:  true,
 		},
 		{
-			name:        "case insensitive match",
-			snippet:     &Snippet{Tags: []string{"Go", "Web"}},
-			filterTags:  []string{"go", "web"},
-			wantMatch:   true,
+			name:       "case insensitive match",
+			snippet:    &Snippet{Tags: []string{"Go", "Web"}},
+			filterTags: []string{"go", "web"},
+			wantMatch:  true,
 		},
 		{
-			name:        "missing one tag (AND logic fails)",
-			snippet:     &Snippet{Tags: []string{"go"}},
-			filterTags:  []string{"go", "web"},
-			wantMatch:   false,
+			name:       "missing one tag (AND logic fails)",
+			snippet:    &Snippet{Tags: []string{"go"}},
+			filterTags: []string{"go", "web"},
+			wantMatch:  false,
 		},
 		{
-			name:        "no matching tags",
-			snippet:     &Snippet{Tags: []string{"python"}},
-			filterTags:  []string{"go"},
-			wantMatch:   false,
+			name:       "no matching tags",
+			snippet:    &Snippet{Tags: []string{"python"}},
+			filterTags: []string{"go"},
+			wantMatch:  false,
 		},
 		{
-			name:        "empty snippet tags",
-			snippet:     &Snippet{Tags: []string{}},
-			filterTags:  []string{"go"},
-			wantMatch:   false,
+			name:       "empty snippet tags",
+			snippet:    &Snippet{Tags: []string{}},
+			filterTags: []string{"go"},
+			wantMatch:  false,
 		},
 	}
 
@@ -616,8 +616,8 @@ func TestManager_SearchWithFilters(t *testing.T) {
 			wantIDs:   []string{"id-4"},
 		},
 		{
-			name: "query with language filter",
-			opts: SearchOptions{Query: "deploy", Language: "bash"},
+			name:      "query with language filter",
+			opts:      SearchOptions{Query: "deploy", Language: "bash"},
 			wantCount: 1,
 			wantIDs:   []string{"id-3"},
 		},
@@ -700,4 +700,3 @@ func TestManager_SearchWithFilters(t *testing.T) {
 		})
 	}
 }
-

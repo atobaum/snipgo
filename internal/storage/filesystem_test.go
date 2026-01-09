@@ -10,21 +10,21 @@ import (
 // Returns cleanup function and error
 func setupTestConfig(tmpDir string) (func(), error) {
 	originalEnv := os.Getenv("SNIPGO_CONFIG_PATH")
-	
+
 	// Create temporary config file
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	content := "data_directory: " + tmpDir + "\n"
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		return nil, err
 	}
-	
+
 	os.Setenv("SNIPGO_CONFIG_PATH", configPath)
-	
+
 	cleanup := func() {
 		os.Setenv("SNIPGO_CONFIG_PATH", originalEnv)
 		os.Remove(configPath)
 	}
-	
+
 	return cleanup, nil
 }
 
@@ -277,7 +277,7 @@ func TestFileSystem_WriteFile(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
+		name     string
 		filePath string
 		content  []byte
 		wantErr  bool
@@ -405,9 +405,9 @@ func TestFileSystem_FileExists(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func() string
-		want     bool
+		name  string
+		setup func() string
+		want  bool
 	}{
 		{
 			name: "file exists",
@@ -448,4 +448,3 @@ func TestFileSystem_FileExists(t *testing.T) {
 		})
 	}
 }
-
