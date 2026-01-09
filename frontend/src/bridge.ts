@@ -8,11 +8,12 @@ function convertSnippet(wailsSnippet: core.Snippet): Snippet {
   return {
     id: wailsSnippet.id,
     title: wailsSnippet.title,
+    description: wailsSnippet.description || '',
     tags: wailsSnippet.tags,
     language: wailsSnippet.language,
     is_favorite: wailsSnippet.is_favorite,
-    created_at: typeof wailsSnippet.created_at === 'string' 
-      ? wailsSnippet.created_at 
+    created_at: typeof wailsSnippet.created_at === 'string'
+      ? wailsSnippet.created_at
       : new Date(wailsSnippet.created_at).toISOString(),
     updated_at: typeof wailsSnippet.updated_at === 'string'
       ? wailsSnippet.updated_at
@@ -26,6 +27,7 @@ function convertToWailsSnippet(snippet: Snippet): core.Snippet {
   return core.Snippet.createFrom({
     id: snippet.id,
     title: snippet.title,
+    description: snippet.description,
     tags: snippet.tags,
     language: snippet.language,
     is_favorite: snippet.is_favorite,

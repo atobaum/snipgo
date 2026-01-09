@@ -56,6 +56,13 @@ func TestManager_Search(t *testing.T) {
 			Tags:  []string{"web", "html"},
 			Body:  "Building web applications with HTML and CSS",
 		},
+		{
+			ID:          "id-6",
+			Title:       "Docker Commands",
+			Description: "Useful container management commands",
+			Tags:        []string{"docker", "devops"},
+			Body:        "docker run -it ubuntu bash",
+		},
 	}
 
 	// Save all snippets
@@ -74,10 +81,10 @@ func TestManager_Search(t *testing.T) {
 		minScore     int // Minimum score for first result
 	}{
 		{
-			name:      "empty query returns all snippets",
-			query:     "",
-			wantCount: 5,
-			wantIDs:   []string{"id-1", "id-2", "id-3", "id-4", "id-5"},
+			name:        "empty query returns all snippets",
+			query:       "",
+			wantCount:   6,
+			wantIDs:     []string{"id-1", "id-2", "id-3", "id-4", "id-5", "id-6"},
 			checkScores: false,
 		},
 		{
@@ -121,12 +128,20 @@ func TestManager_Search(t *testing.T) {
 			minScore:   10, // Tag match gives score 10
 		},
 		{
-			name:      "search by body",
-			query:     "database",
-			wantCount: 1,
-			wantIDs:   []string{"id-4"},
+			name:        "search by body",
+			query:       "database",
+			wantCount:   1,
+			wantIDs:     []string{"id-4"},
 			checkScores: true,
-			minScore:   5, // Body match gives score 5
+			minScore:    5, // Body match gives score 5
+		},
+		{
+			name:        "search by description",
+			query:       "container",
+			wantCount:   1,
+			wantIDs:     []string{"id-6"},
+			checkScores: true,
+			minScore:    5, // Description match gives score 5
 		},
 		{
 			name:      "search by tag and body",

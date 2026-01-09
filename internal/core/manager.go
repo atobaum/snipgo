@@ -217,14 +217,15 @@ func copySnippet(s *Snippet) *Snippet {
 	copy(tags, s.Tags)
 
 	return &Snippet{
-		ID:         s.ID,
-		Title:      s.Title,
-		Tags:       tags,
-		Language:   s.Language,
-		IsFavorite: s.IsFavorite,
-		CreatedAt:  s.CreatedAt,
-		UpdatedAt:  s.UpdatedAt,
-		Body:       s.Body,
+		ID:          s.ID,
+		Title:       s.Title,
+		Description: s.Description,
+		Tags:        tags,
+		Language:    s.Language,
+		IsFavorite:  s.IsFavorite,
+		CreatedAt:   s.CreatedAt,
+		UpdatedAt:   s.UpdatedAt,
+		Body:        s.Body,
 	}
 }
 

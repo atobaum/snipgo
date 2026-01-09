@@ -9,9 +9,10 @@ import (
 
 // Snippet represents a code snippet with metadata
 type Snippet struct {
-	ID         string    `yaml:"id" json:"id"`
-	Title      string    `yaml:"title" json:"title"`
-	Tags       []string  `yaml:"tags" json:"tags"`
+	ID          string    `yaml:"id" json:"id"`
+	Title       string    `yaml:"title" json:"title"`
+	Description string    `yaml:"description" json:"description"`
+	Tags        []string  `yaml:"tags" json:"tags"`
 	Language   string    `yaml:"language" json:"language"`
 	IsFavorite bool      `yaml:"is_favorite" json:"is_favorite"`
 	CreatedAt  time.Time `yaml:"created_at" json:"created_at"`
@@ -30,14 +31,15 @@ func generateID() string {
 func NewSnippet(title string) *Snippet {
 	now := time.Now()
 	return &Snippet{
-		ID:         generateID(),
-		Title:      title,
-		Tags:       []string{},
-		Language:   "",
-		IsFavorite: false,
-		CreatedAt:  now,
-		UpdatedAt:  now,
-		Body:       "",
+		ID:          generateID(),
+		Title:       title,
+		Description: "",
+		Tags:        []string{},
+		Language:    "",
+		IsFavorite:  false,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Body:        "",
 	}
 }
 
