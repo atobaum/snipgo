@@ -5,6 +5,7 @@ import { python } from "@codemirror/lang-python";
 import { yaml } from "@codemirror/lang-yaml";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
+import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { Snippet } from "../types";
 import { app } from "../bridge";
@@ -64,6 +65,7 @@ export function SnippetEditor({
   const [body, setBody] = useState("");
   const [rawMode, setRawMode] = useState(false);
   const [rawContent, setRawContent] = useState("");
+  const [wordWrap, setWordWrap] = useState(true);
   const [saveStatus, setSaveStatus] = useState<
     "saved" | "saving" | "pending" | null
   >(null);
@@ -404,6 +406,17 @@ ${body}`;
             >
               {rawMode ? "Form Mode" : "Raw Mode"}
             </button>
+            <button
+              onClick={() => setWordWrap(!wordWrap)}
+              className={`px-3 py-1 rounded ${
+                wordWrap
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+              title={wordWrap ? "Word wrap enabled" : "Word wrap disabled"}
+            >
+              Wrap
+            </button>
           </div>
         </div>
 
@@ -620,19 +633,27 @@ ${body}`;
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0">
         {rawMode ? (
           <textarea
             value={rawContent}
             onChange={(e) => setRawContent(e.target.value)}
             className="w-full h-full p-4 font-mono text-sm border-none outline-none resize-none"
+            style={{ whiteSpace: wordWrap ? "pre-wrap" : "pre" }}
             readOnly
           />
         ) : (
           <CodeMirror
             value={body}
             onChange={(value) => setBody(value)}
-            extensions={languageExtension ? [languageExtension] : []}
+            extensions={[
+              ...(languageExtension ? [languageExtension] : []),
+              ...(wordWrap ? [EditorView.lineWrapping] : []),
+              EditorView.theme({
+                "&": { height: "100%" },
+                ".cm-scroller": { overflow: "auto" },
+              }),
+            ]}
             theme="light"
             basicSetup={{
               lineNumbers: true,
@@ -640,7 +661,7 @@ ${body}`;
               dropCursor: false,
               allowMultipleSelections: false,
             }}
-            className="h-full"
+            style={{ height: "100%" }}
           />
         )}
       </div>
