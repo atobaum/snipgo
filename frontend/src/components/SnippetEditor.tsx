@@ -522,6 +522,9 @@ ${body}`;
             <label className="mr-2">Language:</label>
             <input
               type="text"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={showLanguageDropdown ? languageFilter : language}
               onChange={(e) => {
                 setLanguageFilter(e.target.value);
