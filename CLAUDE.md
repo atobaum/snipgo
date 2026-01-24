@@ -229,19 +229,23 @@ Exposes Go methods to frontend via Wails IPC:
   - Multiple unrelated useEffect hooks
   - Long JSX with repeated patterns
 
-### Commit Message Format (from .cursorrules)
+### Commit Message Format
 
 ```
-<type>: <subject>
+<scope>(<action>): <subject>
 
 <body> (optional)
 ```
 
-**Types:** feat, fix, refactor, docs, style, test, chore
+**Scopes:** cli, gui, core, docs, ci, chore
+
+**Actions:** feat, fix, refactor, test, style
 
 **Examples:**
-- `feat: add fuzzy search for snippet titles`
-- `fix: resolve frontmatter parsing error with special characters`
+- `gui(feat): add fuzzy search for snippet titles`
+- `cli(fix): resolve frontmatter parsing error with special characters`
+- `core(refactor): extract snippet validation logic`
+- `docs(feat): add API documentation`
 
 ### Testing Guidelines (from .cursorrules)
 
