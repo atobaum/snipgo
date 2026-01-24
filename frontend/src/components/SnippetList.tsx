@@ -2,12 +2,28 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Snippet } from "../types";
 import { app } from "../bridge";
 
+type SortField = "name" | "created" | "updated";
+type SortOrder = "asc" | "desc";
+
 interface SnippetListProps {
   onSelect: (snippet: Snippet) => void;
   searchQuery?: string;
   selectedId?: string;
   refreshKey?: number; // 저장 후 목록 갱신 트리거
   selectedTag?: string | null; // 선택된 태그로 필터링
+}
+
+function loadSortPreference(): { field: SortField; order: SortOrder } {
+  try {
+    const saved = localStorage.getItem("snippetSort");
+    if (saved) {
+      const { field, order } = JSON.parse(saved);
+      return { field, order };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { field: "updated", order: "desc" };
 }
 
 export function SnippetList({
@@ -21,6 +37,10 @@ export function SnippetList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sort state with localStorage persistence
+  const [sortField, setSortField] = useState<SortField>(() => loadSortPreference().field);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => loadSortPreference().order);
+
   // 태그로 필터링된 스니펫
   const filteredSnippets = useMemo(() => {
     if (!selectedTag) return snippets;
@@ -30,6 +50,31 @@ export function SnippetList({
       )
     );
   }, [snippets, selectedTag]);
+
+  // Sort filtered snippets
+  const sortedSnippets = useMemo(() => {
+    const sorted = [...filteredSnippets].sort((a, b) => {
+      let compare = 0;
+      switch (sortField) {
+        case "name":
+          compare = a.title.localeCompare(b.title);
+          break;
+        case "created":
+          compare = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case "updated":
+          compare = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          break;
+      }
+      return sortOrder === "asc" ? compare : -compare;
+    });
+    return sorted;
+  }, [filteredSnippets, sortField, sortOrder]);
+
+  // Save sort preference to localStorage
+  useEffect(() => {
+    localStorage.setItem("snippetSort", JSON.stringify({ field: sortField, order: sortOrder }));
+  }, [sortField, sortOrder]);
 
   const loadSnippets = useCallback(async () => {
     try {
@@ -75,7 +120,7 @@ export function SnippetList({
     );
   }
 
-  if (filteredSnippets.length === 0) {
+  if (sortedSnippets.length === 0) {
     return (
       <div className="p-4">
         <p className="text-gray-500">No snippets found.</p>
@@ -84,8 +129,29 @@ export function SnippetList({
   }
 
   return (
-    <div className="divide-y divide-gray-100">
-      {filteredSnippets.map((snippet) => (
+    <div className="flex flex-col h-full">
+      {/* Sort selector */}
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 text-xs flex-shrink-0">
+        <select
+          value={sortField}
+          onChange={(e) => setSortField(e.target.value as SortField)}
+          className="bg-transparent border-none outline-none text-gray-600 cursor-pointer"
+        >
+          <option value="name">Name</option>
+          <option value="created">Created</option>
+          <option value="updated">Updated</option>
+        </select>
+        <button
+          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+          className="text-gray-500 hover:text-gray-700"
+          title={sortOrder === "asc" ? "Ascending" : "Descending"}
+        >
+          {sortOrder === "asc" ? "↑" : "↓"}
+        </button>
+      </div>
+      {/* Snippet list */}
+      <div className="divide-y divide-gray-100 overflow-y-auto">
+      {sortedSnippets.map((snippet) => (
         <div
           key={snippet.id}
           onClick={() => onSelect(snippet)}
@@ -134,6 +200,7 @@ export function SnippetList({
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }
