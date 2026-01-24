@@ -217,19 +217,35 @@ Exposes Go methods to frontend via Wails IPC:
 - **Props:** Define with `interface`
 - **Variables:** `const` preferred, `let` only when necessary
 
-### Commit Message Format (from .cursorrules)
+### Component Size Guidelines
+
+- Keep React components under 200-250 lines
+- If a component exceeds this, consider extracting:
+  - Custom hooks for reusable logic
+  - Sub-components for distinct UI sections
+  - Constants/types to separate files
+- Signs a component needs refactoring:
+  - More than 10 useState hooks
+  - Multiple unrelated useEffect hooks
+  - Long JSX with repeated patterns
+
+### Commit Message Format
 
 ```
-<type>: <subject>
+<scope>(<action>): <subject>
 
 <body> (optional)
 ```
 
-**Types:** feat, fix, refactor, docs, style, test, chore
+**Scopes:** cli, gui, core, docs, ci, chore
+
+**Actions:** feat, fix, refactor, test, style
 
 **Examples:**
-- `feat: add fuzzy search for snippet titles`
-- `fix: resolve frontmatter parsing error with special characters`
+- `gui(feat): add fuzzy search for snippet titles`
+- `cli(fix): resolve frontmatter parsing error with special characters`
+- `core(refactor): extract snippet validation logic`
+- `docs(feat): add API documentation`
 
 ### Testing Guidelines (from .cursorrules)
 
