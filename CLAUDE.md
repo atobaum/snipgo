@@ -217,6 +217,18 @@ Exposes Go methods to frontend via Wails IPC:
 - **Props:** Define with `interface`
 - **Variables:** `const` preferred, `let` only when necessary
 
+### Component Size Guidelines
+
+- Keep React components under 200-250 lines
+- If a component exceeds this, consider extracting:
+  - Custom hooks for reusable logic
+  - Sub-components for distinct UI sections
+  - Constants/types to separate files
+- Signs a component needs refactoring:
+  - More than 10 useState hooks
+  - Multiple unrelated useEffect hooks
+  - Long JSX with repeated patterns
+
 ### Commit Message Format (from .cursorrules)
 
 ```
