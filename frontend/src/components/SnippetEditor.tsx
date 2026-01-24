@@ -78,6 +78,7 @@ export function SnippetEditor({
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [languageFilter, setLanguageFilter] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
   // 스니펫 로딩 중인지 추적 (로딩 중에는 auto-save 방지)
   const isLoadingSnippetRef = useRef(false);
@@ -112,6 +113,16 @@ export function SnippetEditor({
       lang.toLowerCase().includes(lower)
     );
   }, [languageFilter]);
+
+  // Scroll highlighted language into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && languageDropdownRef.current) {
+      const el = languageDropdownRef.current.querySelector(
+        `[data-language-index="${highlightedIndex}"]`
+      );
+      el?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightedIndex]);
 
   // isDirty 변경 시 부모에게 알림
   useEffect(() => {
@@ -538,7 +549,7 @@ ${body}`;
                 setHighlightedIndex(-1);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
+                if (e.key === "Escape" || e.key === "Tab") {
                   setShowLanguageDropdown(false);
                   setLanguageFilter("");
                   setHighlightedIndex(-1);
@@ -563,11 +574,15 @@ ${body}`;
               className="px-2 py-1 border border-gray-300 rounded w-32 text-xs"
             />
             {showLanguageDropdown && (
-              <div className="absolute left-16 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 max-h-48 overflow-y-auto min-w-[140px]">
+              <div
+                ref={languageDropdownRef}
+                className="absolute left-16 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 max-h-48 overflow-y-auto min-w-[140px]"
+              >
                 {filteredLanguages.length > 0 ? (
                   filteredLanguages.map((lang, index) => (
                     <button
                       key={lang}
+                      data-language-index={index}
                       onClick={() => {
                         setLanguage(lang);
                         setShowLanguageDropdown(false);
@@ -576,7 +591,7 @@ ${body}`;
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 ${
                         index === highlightedIndex
-                          ? "bg-blue-100"
+                          ? "bg-blue-100 text-blue-800"
                           : language === lang
                             ? "bg-blue-50 text-blue-800"
                             : "text-gray-700"
