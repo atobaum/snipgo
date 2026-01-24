@@ -186,6 +186,22 @@ Exposes Go methods to frontend via Wails IPC:
 
 ## Important Conventions
 
+### Git Workflow
+
+**작업 시작 시:**
+1. 최신 main 브랜치에서 새 브랜치 생성
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b feature/branch-name
+   ```
+
+**PR 생성:**
+- 기본적으로 `gh` CLI를 사용하여 main 브랜치로 PR 생성
+  ```bash
+  gh pr create --base main
+  ```
+
 ### Go Code Style (from .cursorrules)
 
 - **File naming:** lowercase with underscores (`snippet_test.go`, `file_watcher.go`)
