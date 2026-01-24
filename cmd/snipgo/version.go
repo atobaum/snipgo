@@ -20,4 +20,3 @@ func runVersion(cmd *cobra.Command, args []string) error {
 	fmt.Printf("date: %s\n", date)
 	return nil
 }
-

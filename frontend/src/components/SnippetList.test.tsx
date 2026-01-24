@@ -98,7 +98,7 @@ describe('SnippetList', () => {
       await waitFor(() => {
         const firstItem = screen.getByText('First Snippet').closest('div[class*="cursor-pointer"]');
         expect(firstItem).toHaveClass('bg-blue-50');
-        expect(firstItem).toHaveClass('border-l-4');
+        expect(firstItem).toHaveClass('border-l-2');
         expect(firstItem).toHaveClass('border-blue-500');
       });
     });
