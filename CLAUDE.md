@@ -237,15 +237,14 @@ Exposes Go methods to frontend via Wails IPC:
 <body> (optional)
 ```
 
-**Scopes:** cli, gui, core, docs, ci, chore
-
-**Actions:** feat, fix, refactor, test, style
+**Scope:** feat, fix, refactor, test, style, docs
+**Actions:** cli, gui, core, docs, ci
 
 **Examples:**
-- `gui(feat): add fuzzy search for snippet titles`
-- `cli(fix): resolve frontmatter parsing error with special characters`
-- `core(refactor): extract snippet validation logic`
-- `docs(feat): add API documentation`
+- `feat(gui): add fuzzy search for snippet titles`
+- `fix(cli): resolve frontmatter parsing error with special characters`
+- `refactor(core): extract snippet validation logic`
+- `docs: add API documentation`
 
 ### Testing Guidelines (from .cursorrules)
 
