@@ -77,6 +77,7 @@ export function SnippetEditor({
   // Language selector
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [languageFilter, setLanguageFilter] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
   // 스니펫 로딩 중인지 추적 (로딩 중에는 auto-save 방지)
   const isLoadingSnippetRef = useRef(false);
@@ -528,21 +529,34 @@ ${body}`;
               value={showLanguageDropdown ? languageFilter : language}
               onChange={(e) => {
                 setLanguageFilter(e.target.value);
+                setHighlightedIndex(-1);
                 if (!showLanguageDropdown) setShowLanguageDropdown(true);
               }}
               onFocus={() => {
                 setLanguageFilter(language);
                 setShowLanguageDropdown(true);
+                setHighlightedIndex(-1);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   setShowLanguageDropdown(false);
                   setLanguageFilter("");
+                  setHighlightedIndex(-1);
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) =>
+                    prev < filteredLanguages.length - 1 ? prev + 1 : prev
+                  );
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev));
                 } else if (e.key === "Enter" && filteredLanguages.length > 0) {
                   e.preventDefault();
-                  setLanguage(filteredLanguages[0]);
+                  const selectedIndex = highlightedIndex >= 0 ? highlightedIndex : 0;
+                  setLanguage(filteredLanguages[selectedIndex]);
                   setShowLanguageDropdown(false);
                   setLanguageFilter("");
+                  setHighlightedIndex(-1);
                 }
               }}
               placeholder="Select..."
@@ -551,18 +565,21 @@ ${body}`;
             {showLanguageDropdown && (
               <div className="absolute left-16 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-20 max-h-48 overflow-y-auto min-w-[140px]">
                 {filteredLanguages.length > 0 ? (
-                  filteredLanguages.map((lang) => (
+                  filteredLanguages.map((lang, index) => (
                     <button
                       key={lang}
                       onClick={() => {
                         setLanguage(lang);
                         setShowLanguageDropdown(false);
                         setLanguageFilter("");
+                        setHighlightedIndex(-1);
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 ${
-                        language === lang
-                          ? "bg-blue-100 text-blue-800"
-                          : "text-gray-700"
+                        index === highlightedIndex
+                          ? "bg-blue-100"
+                          : language === lang
+                            ? "bg-blue-50 text-blue-800"
+                            : "text-gray-700"
                       }`}
                     >
                       {lang}
@@ -581,6 +598,7 @@ ${body}`;
                         setLanguage(languageFilter);
                         setShowLanguageDropdown(false);
                         setLanguageFilter("");
+                        setHighlightedIndex(-1);
                       }}
                       className="w-full px-3 py-1.5 text-left text-xs hover:bg-blue-50 text-blue-600 border-t border-gray-100"
                     >
