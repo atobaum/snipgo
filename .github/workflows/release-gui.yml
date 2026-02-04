@@ -47,10 +47,14 @@ jobs:
         run: cd frontend && pnpm install
 
       - name: Build for darwin/amd64
-        run: wails build -platform darwin/amd64 -o Snipgo-amd64
+        run: |
+          wails build -platform darwin/amd64
+          mv build/bin/Snipgo.app build/bin/Snipgo-amd64.app
 
       - name: Build for darwin/arm64
-        run: wails build -platform darwin/arm64 -o Snipgo-arm64
+        run: |
+          wails build -platform darwin/arm64
+          mv build/bin/Snipgo.app build/bin/Snipgo-arm64.app
 
       - name: Create Universal Binary
         run: |
@@ -61,12 +65,9 @@ jobs:
 
           # Create universal binary using lipo
           lipo -create \
-            build/bin/Snipgo-amd64.app/Contents/MacOS/Snipgo-amd64 \
-            build/bin/Snipgo-arm64.app/Contents/MacOS/Snipgo-arm64 \
+            build/bin/Snipgo-amd64.app/Contents/MacOS/Snipgo \
+            build/bin/Snipgo-arm64.app/Contents/MacOS/Snipgo \
             -output build/bin/Snipgo.app/Contents/MacOS/Snipgo
-
-          # Update Info.plist executable name
-          /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable Snipgo" build/bin/Snipgo.app/Contents/Info.plist
 
           # Clean up architecture-specific builds
           rm -rf build/bin/Snipgo-amd64.app build/bin/Snipgo-arm64.app
