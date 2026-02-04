@@ -203,6 +203,7 @@ Exposes Go methods to frontend via Wails IPC:
 - Don't wait until the end to commit everything at once
 - Each commit should be atomic and pass tests/lint
 - Commit after completing each task or meaningful chunk
+- **Write tests alongside code** - Don't defer testing to the end; write tests as you implement features
 
 **Creating PR:**
 - Use `gh` CLI to create PR into main branch

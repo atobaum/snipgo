@@ -229,6 +229,19 @@ func copySnippet(s *Snippet) *Snippet {
 	}
 }
 
+// GetFilenameByID returns the filename (basename only) for a snippet ID
+func (m *Manager) GetFilenameByID(id string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	filePath := m.findFileBySnippetID(id)
+	if filePath == "" {
+		return "", fmt.Errorf("file not found for snippet: %s", id)
+	}
+
+	return filepath.Base(filePath), nil
+}
+
 // GetAllTags returns all unique tags across all snippets, sorted alphabetically
 func (m *Manager) GetAllTags() []string {
 	m.mu.RLock()
