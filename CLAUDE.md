@@ -190,13 +190,20 @@ Exposes Go methods to frontend via Wails IPC:
 
 **Language:** All commits, PR titles, PR descriptions, and branch names must be written in **English**.
 
-**Starting work:**
+**Starting work (ALWAYS create a feature branch first):**
 1. Create a new branch from the latest main branch
    ```bash
    git checkout main
    git pull origin main
    git checkout -b feature/branch-name
    ```
+
+**During development:**
+- Make incremental commits as you complete logical units of work
+- Don't wait until the end to commit everything at once
+- Each commit should be atomic and pass tests/lint
+- Commit after completing each task or meaningful chunk
+- **Write tests alongside code** - Don't defer testing to the end; write tests as you implement features
 
 **Creating PR:**
 - Use `gh` CLI to create PR into main branch

@@ -9,15 +9,39 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// GitConfig holds git-related configuration
+type GitConfig struct {
+	Enabled               bool   `yaml:"enabled"`
+	AutoCommit            bool   `yaml:"auto_commit"`
+	AutoPush              bool   `yaml:"auto_push"`
+	CommitMessageTemplate string `yaml:"commit_message_template"`
+	Remote                string `yaml:"remote"`
+	Branch                string `yaml:"branch"`
+}
+
+// DefaultGitConfig returns default git configuration
+func DefaultGitConfig() *GitConfig {
+	return &GitConfig{
+		Enabled:               false,
+		AutoCommit:            false,
+		AutoPush:              false,
+		CommitMessageTemplate: "Update: {{.Title}}",
+		Remote:                "origin",
+		Branch:                "main",
+	}
+}
+
 // Config holds the application configuration
 type Config struct {
-	DataDirectory string `yaml:"data_directory"`
+	DataDirectory string     `yaml:"data_directory"`
+	Git           *GitConfig `yaml:"git,omitempty"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		DataDirectory: "~/.config/snipgo/snippets",
+		Git:           DefaultGitConfig(),
 	}
 }
 
@@ -51,6 +75,11 @@ func LoadConfig() (*Config, error) {
 	// Merge file config (only if set)
 	if fileConfig.DataDirectory != "" {
 		config.DataDirectory = expandPath(fileConfig.DataDirectory)
+	}
+
+	// Merge git config if present in file
+	if fileConfig.Git != nil {
+		config.Git = fileConfig.Git
 	}
 
 	return config, nil
