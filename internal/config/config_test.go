@@ -48,14 +48,13 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "no config file",
 			setup: func() error {
-				os.Unsetenv("SNIPGO_CONFIG_PATH")
-				// Remove config file if exists
-				homeDir, _ := os.UserHomeDir()
-				configPath := filepath.Join(homeDir, ".config", "snipgo", "config.yaml")
-				os.Remove(configPath)
+				// Point to a non-existent config file path to simulate no config
+				nonExistentPath := filepath.Join(tmpDir, "non-existent", "config.yaml")
+				os.Setenv("SNIPGO_CONFIG_PATH", nonExistentPath)
 				return nil
 			},
 			cleanup: func() error {
+				os.Unsetenv("SNIPGO_CONFIG_PATH")
 				return nil
 			},
 			wantDir: "", // Will use default
