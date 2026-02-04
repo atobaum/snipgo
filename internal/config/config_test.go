@@ -438,3 +438,176 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+func TestDefaultGitConfig(t *testing.T) {
+	cfg := DefaultGitConfig()
+
+	if cfg == nil {
+		t.Fatal("DefaultGitConfig() returned nil")
+	}
+
+	if cfg.Enabled {
+		t.Error("DefaultGitConfig() Enabled should be false by default")
+	}
+
+	if cfg.AutoCommit {
+		t.Error("DefaultGitConfig() AutoCommit should be false by default")
+	}
+
+	if cfg.AutoPush {
+		t.Error("DefaultGitConfig() AutoPush should be false by default")
+	}
+
+	if cfg.Remote != "origin" {
+		t.Errorf("DefaultGitConfig() Remote = %v, want origin", cfg.Remote)
+	}
+
+	if cfg.Branch != "main" {
+		t.Errorf("DefaultGitConfig() Branch = %v, want main", cfg.Branch)
+	}
+
+	if cfg.CommitMessageTemplate != "Update: {{.Title}}" {
+		t.Errorf("DefaultGitConfig() CommitMessageTemplate = %v, want 'Update: {{.Title}}'", cfg.CommitMessageTemplate)
+	}
+}
+
+func TestLoadConfig_WithGitConfig(t *testing.T) {
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Save original environment
+	originalConfigPathEnv := os.Getenv("SNIPGO_CONFIG_PATH")
+	defer os.Setenv("SNIPGO_CONFIG_PATH", originalConfigPathEnv)
+
+	t.Run("loads git config from file", func(t *testing.T) {
+		testConfigPath := filepath.Join(tmpDir, "config-git.yaml")
+		content := `data_directory: /tmp/snippets
+git:
+  enabled: true
+  auto_commit: true
+  auto_push: false
+  commit_message_template: "Custom: {{.Title}}"
+  remote: upstream
+  branch: develop
+`
+		if err := os.WriteFile(testConfigPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write config: %v", err)
+		}
+		os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+
+		cfg, err := LoadConfig()
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		if cfg.Git == nil {
+			t.Fatal("LoadConfig() Git config is nil")
+		}
+
+		if !cfg.Git.Enabled {
+			t.Error("Git.Enabled should be true")
+		}
+
+		if !cfg.Git.AutoCommit {
+			t.Error("Git.AutoCommit should be true")
+		}
+
+		if cfg.Git.AutoPush {
+			t.Error("Git.AutoPush should be false")
+		}
+
+		if cfg.Git.Remote != "upstream" {
+			t.Errorf("Git.Remote = %v, want upstream", cfg.Git.Remote)
+		}
+
+		if cfg.Git.Branch != "develop" {
+			t.Errorf("Git.Branch = %v, want develop", cfg.Git.Branch)
+		}
+
+		if cfg.Git.CommitMessageTemplate != "Custom: {{.Title}}" {
+			t.Errorf("Git.CommitMessageTemplate = %v, want 'Custom: {{.Title}}'", cfg.Git.CommitMessageTemplate)
+		}
+	})
+
+	t.Run("uses default git config when not in file", func(t *testing.T) {
+		testConfigPath := filepath.Join(tmpDir, "config-no-git.yaml")
+		content := `data_directory: /tmp/snippets
+`
+		if err := os.WriteFile(testConfigPath, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write config: %v", err)
+		}
+		os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+
+		cfg, err := LoadConfig()
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
+
+		// Git config should be set to defaults
+		if cfg.Git == nil {
+			t.Fatal("LoadConfig() Git config should have defaults, got nil")
+		}
+
+		if cfg.Git.Enabled {
+			t.Error("Default Git.Enabled should be false")
+		}
+	})
+}
+
+func TestSaveConfig_WithGitConfig(t *testing.T) {
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Save original environment
+	originalConfigPathEnv := os.Getenv("SNIPGO_CONFIG_PATH")
+	defer os.Setenv("SNIPGO_CONFIG_PATH", originalConfigPathEnv)
+
+	testConfigPath := filepath.Join(tmpDir, "config-save-git.yaml")
+	os.Setenv("SNIPGO_CONFIG_PATH", testConfigPath)
+
+	cfg := &Config{
+		DataDirectory: tmpDir,
+		Git: &GitConfig{
+			Enabled:               true,
+			AutoCommit:            true,
+			AutoPush:              false,
+			CommitMessageTemplate: "Save: {{.Title}}",
+			Remote:                "origin",
+			Branch:                "main",
+		},
+	}
+
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Reload and verify
+	loaded, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if loaded.Git == nil {
+		t.Fatal("Loaded Git config is nil")
+	}
+
+	if !loaded.Git.Enabled {
+		t.Error("Loaded Git.Enabled should be true")
+	}
+
+	if !loaded.Git.AutoCommit {
+		t.Error("Loaded Git.AutoCommit should be true")
+	}
+
+	if loaded.Git.CommitMessageTemplate != "Save: {{.Title}}" {
+		t.Errorf("Loaded Git.CommitMessageTemplate = %v, want 'Save: {{.Title}}'", loaded.Git.CommitMessageTemplate)
+	}
+}

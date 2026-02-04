@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"snipgo/internal/git"
 )
 
 // setupTestConfig creates a temporary config file and sets SNIPGO_CONFIG_PATH
@@ -811,5 +813,192 @@ func TestCopySnippet(t *testing.T) {
 	// Verify pointers are different
 	if copied == original {
 		t.Error("copySnippet() returned same pointer")
+	}
+}
+
+func TestManager_SetGetGitManager(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	// Initially nil
+	if m.GetGitManager() != nil {
+		t.Error("Expected GetGitManager() to return nil initially")
+	}
+
+	// Set a git manager
+	gm := git.NewGitManager(tmpDir, nil)
+	m.SetGitManager(gm)
+
+	// Now should return the same instance
+	if m.GetGitManager() != gm {
+		t.Error("Expected GetGitManager() to return the set GitManager")
+	}
+
+	// Set to nil
+	m.SetGitManager(nil)
+	if m.GetGitManager() != nil {
+		t.Error("Expected GetGitManager() to return nil after setting nil")
+	}
+}
+
+func TestManager_GetFilenameByID(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	t.Run("returns error for non-existent snippet", func(t *testing.T) {
+		_, err := m.GetFilenameByID("non-existent-id")
+		if err == nil {
+			t.Error("Expected error for non-existent snippet")
+		}
+	})
+
+	t.Run("returns filename for existing snippet", func(t *testing.T) {
+		snippet := &Snippet{
+			ID:    "test-filename-id",
+			Title: "Test Snippet",
+			Body:  "Body content",
+		}
+		if err := m.Save(snippet); err != nil {
+			t.Fatalf("Failed to save snippet: %v", err)
+		}
+
+		filename, err := m.GetFilenameByID("test-filename-id")
+		if err != nil {
+			t.Errorf("GetFilenameByID() error = %v", err)
+			return
+		}
+
+		// Should return just the basename, not full path
+		if filepath.Base(filename) != filename {
+			t.Errorf("GetFilenameByID() returned full path %v, expected basename", filename)
+		}
+
+		// Should end with .md
+		if len(filename) < 3 || filename[len(filename)-3:] != ".md" {
+			t.Errorf("GetFilenameByID() = %v, expected to end with .md", filename)
+		}
+	})
+}
+
+func TestManager_FormatCommitMessage(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	snippet := &Snippet{
+		ID:          "test-id",
+		Title:       "My Snippet",
+		Description: "A test snippet",
+		Language:    "go",
+	}
+
+	t.Run("without git manager uses default", func(t *testing.T) {
+		// Without GitManager, formatCommitMessage should handle nil gracefully
+		// Since it's a private method, we test it indirectly through Save with auto-commit
+		// For now, we just verify the manager works without git
+		if err := m.Save(snippet); err != nil {
+			t.Errorf("Save() without GitManager failed: %v", err)
+		}
+	})
+
+	t.Run("with git manager and template", func(t *testing.T) {
+		gitCfg := &git.GitConfig{
+			Enabled:               true,
+			AutoCommit:            true,
+			CommitMessageTemplate: "{{.Action}}: {{.Title}}",
+		}
+		gm := git.NewGitManager(tmpDir, gitCfg)
+		m.SetGitManager(gm)
+
+		// The formatCommitMessage is private, but we can test it indirectly
+		// by verifying Save works with git configured
+		snippet.Title = "Updated Snippet"
+		if err := m.Save(snippet); err != nil {
+			t.Errorf("Save() with GitManager failed: %v", err)
+		}
+	})
+}
+
+func TestManager_AutoCommit_Disabled(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	// Set up git manager with auto-commit disabled
+	gitCfg := &git.GitConfig{
+		Enabled:    true,
+		AutoCommit: false,
+	}
+	gm := git.NewGitManager(tmpDir, gitCfg)
+	m.SetGitManager(gm)
+
+	// Save should work without attempting git operations
+	snippet := &Snippet{
+		ID:    "test-auto-commit-off",
+		Title: "Test Snippet",
+		Body:  "Body",
+	}
+
+	if err := m.Save(snippet); err != nil {
+		t.Errorf("Save() with AutoCommit=false failed: %v", err)
+	}
+
+	// Delete should also work
+	if err := m.Delete(snippet.ID); err != nil {
+		t.Errorf("Delete() with AutoCommit=false failed: %v", err)
 	}
 }
