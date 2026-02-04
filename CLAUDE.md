@@ -188,19 +188,59 @@ Exposes Go methods to frontend via Wails IPC:
 
 ### Git Workflow
 
-**작업 시작 시:**
-1. 최신 main 브랜치에서 새 브랜치 생성
+**Language:** All commits, PR titles, PR descriptions, and branch names must be written in **English**.
+
+**Starting work:**
+1. Create a new branch from the latest main branch
    ```bash
    git checkout main
    git pull origin main
    git checkout -b feature/branch-name
    ```
 
-**PR 생성:**
-- 기본적으로 `gh` CLI를 사용하여 main 브랜치로 PR 생성
+**Creating PR:**
+- Use `gh` CLI to create PR into main branch
   ```bash
   gh pr create --base main
   ```
+
+### Feature Development Workflow
+
+**Plan Document Management:**
+- Create a plan document in `prompts/` directory before starting new feature development
+- File naming: `{feature-name}-plan.md` (e.g., `search-filter-plan.md`)
+- After completion: `{feature-name}-implementation-summary.md`
+
+**Plan Document Structure:**
+```markdown
+# {Feature Name} Implementation Plan
+
+## Project Goal
+- Brief description of the goal
+
+## Requirements
+1. Requirement 1
+2. Requirement 2
+
+## Design Decisions
+- Key design decisions
+
+## Implementation Steps
+### Step 1: ...
+### Step 2: ...
+
+## Critical Files
+- List of files to modify
+
+## Backward Compatibility
+- Impact on existing functionality
+```
+
+**Workflow:**
+1. Gather requirements → Create `prompts/{feature}-plan.md`
+2. Review and finalize plan
+3. Implement step by step
+4. After completion, write `prompts/{feature}-implementation-summary.md`
 
 ### Go Code Style (from .cursorrules)
 
