@@ -87,6 +87,19 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Config File: %s\n", configPath)
 	fmt.Printf("  Data Directory: %s\n", cfg.DataDirectory)
 
+	// Git configuration
+	fmt.Println("\nGit configuration:")
+	if cfg.Git != nil {
+		fmt.Printf("  git.enabled: %v\n", cfg.Git.Enabled)
+		fmt.Printf("  git.auto_commit: %v\n", cfg.Git.AutoCommit)
+		fmt.Printf("  git.auto_push: %v\n", cfg.Git.AutoPush)
+		fmt.Printf("  git.commit_message_template: %s\n", cfg.Git.CommitMessageTemplate)
+		fmt.Printf("  git.remote: %s\n", cfg.Git.Remote)
+		fmt.Printf("  git.branch: %s\n", cfg.Git.Branch)
+	} else {
+		fmt.Println("  (using defaults)")
+	}
+
 	return nil
 }
 
@@ -99,11 +112,28 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Ensure git config exists
+	if cfg.Git == nil {
+		cfg.Git = config.DefaultGitConfig()
+	}
+
 	switch key {
 	case "data_directory":
 		cfg.DataDirectory = value
+	case "git.enabled":
+		cfg.Git.Enabled = value == "true" || value == "1"
+	case "git.auto_commit":
+		cfg.Git.AutoCommit = value == "true" || value == "1"
+	case "git.auto_push":
+		cfg.Git.AutoPush = value == "true" || value == "1"
+	case "git.commit_message_template":
+		cfg.Git.CommitMessageTemplate = value
+	case "git.remote":
+		cfg.Git.Remote = value
+	case "git.branch":
+		cfg.Git.Branch = value
 	default:
-		return fmt.Errorf("unknown configuration key: %s", key)
+		return fmt.Errorf("unknown configuration key: %s\nAvailable keys: data_directory, git.enabled, git.auto_commit, git.auto_push, git.commit_message_template, git.remote, git.branch", key)
 	}
 
 	if err := config.SaveConfig(cfg); err != nil {

@@ -23,12 +23,12 @@ var (
 
 // GitConfig holds git-related configuration
 type GitConfig struct {
-	Enabled               bool   `yaml:"enabled"`
-	AutoCommit            bool   `yaml:"auto_commit"`
-	AutoPush              bool   `yaml:"auto_push"`
-	CommitMessageTemplate string `yaml:"commit_message_template"`
-	Remote                string `yaml:"remote"`
-	Branch                string `yaml:"branch"`
+	Enabled               bool
+	AutoCommit            bool
+	AutoPush              bool
+	CommitMessageTemplate string
+	Remote                string
+	Branch                string
 }
 
 // DefaultGitConfig returns default git configuration
