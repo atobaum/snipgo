@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"snipgo/internal/core"
@@ -145,22 +144,8 @@ func scanMultiLineFromReader(r io.Reader, continuationPrompt string) (string, er
 
 // createSnippetWithEditor opens $EDITOR with a template for creating a new snippet.
 func createSnippetWithEditor(title string) (*core.Snippet, error) {
-	// Get editor from environment variable, default to vi
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vi"
-	}
-
 	// Create a new snippet with the title
 	snippet := core.NewSnippet(title)
-
-	// Create temporary file
-	tmpFile, err := os.CreateTemp("", "snipgo-new-*.md")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temporary file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
 
 	// Serialize snippet to markdown
 	content, err := serializeSnippetForEdit(snippet)
@@ -168,48 +153,10 @@ func createSnippetWithEditor(title string) (*core.Snippet, error) {
 		return nil, fmt.Errorf("failed to serialize snippet: %w", err)
 	}
 
-	// Write to temp file
-	if _, err := tmpFile.Write(content); err != nil {
-		tmpFile.Close()
-		return nil, fmt.Errorf("failed to write to temporary file: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close temporary file: %w", err)
-	}
-
-	// Get file modification time before editing
-	beforeStat, err := os.Stat(tmpPath)
+	// Open in editor
+	editedContent, err := editContentInEditor(content, "snipgo-new-")
 	if err != nil {
-		return nil, fmt.Errorf("failed to stat temporary file: %w", err)
-	}
-	beforeModTime := beforeStat.ModTime()
-
-	// Open editor
-	editCmd := exec.Command(editor, tmpPath)
-	editCmd.Stdin = os.Stdin
-	editCmd.Stdout = os.Stdout
-	editCmd.Stderr = os.Stderr
-
-	if err := editCmd.Run(); err != nil {
-		return nil, fmt.Errorf("editor exited with error: %w", err)
-	}
-
-	// Check if file was modified
-	afterStat, err := os.Stat(tmpPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat temporary file after editing: %w", err)
-	}
-	afterModTime := afterStat.ModTime()
-
-	// If file wasn't modified, user might have cancelled
-	if beforeModTime.Equal(afterModTime) {
-		return nil, fmt.Errorf("file was not modified, creation cancelled")
-	}
-
-	// Read edited content
-	editedContent, err := os.ReadFile(tmpPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read edited file: %w", err)
+		return nil, fmt.Errorf("creation cancelled: %w", err)
 	}
 
 	// Parse edited content

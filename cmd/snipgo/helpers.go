@@ -50,6 +50,70 @@ func formatSnippetForFzf(snippet *core.Snippet) string {
 	return line
 }
 
+// editContentInEditor opens the given content in the user's $EDITOR and returns
+// the edited content. Returns an error if the file was not modified.
+// The tempFilePrefix is used for the temporary file name (e.g., "snipgo-edit-", "snipgo-new-").
+func editContentInEditor(content []byte, tempFilePrefix string) ([]byte, error) {
+	// Get editor from environment variable, default to vi
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+
+	// Create temporary file
+	tmpFile, err := os.CreateTemp("", tempFilePrefix+"*.md")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+
+	// Write content to temp file
+	if _, err := tmpFile.Write(content); err != nil {
+		tmpFile.Close()
+		return nil, fmt.Errorf("failed to write to temporary file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close temporary file: %w", err)
+	}
+
+	// Get file modification time before editing
+	beforeStat, err := os.Stat(tmpPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat temporary file: %w", err)
+	}
+	beforeModTime := beforeStat.ModTime()
+
+	// Open editor
+	cmd := exec.Command(editor, tmpPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("editor exited with error: %w", err)
+	}
+
+	// Check if file was modified
+	afterStat, err := os.Stat(tmpPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat temporary file after editing: %w", err)
+	}
+	afterModTime := afterStat.ModTime()
+
+	if beforeModTime.Equal(afterModTime) {
+		return nil, fmt.Errorf("file was not modified")
+	}
+
+	// Read edited content
+	editedContent, err := os.ReadFile(tmpPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read edited file: %w", err)
+	}
+
+	return editedContent, nil
+}
+
 // selectSnippetWithFzf uses fzf to interactively select a snippet from the given list
 func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 	if len(snippets) == 0 {
