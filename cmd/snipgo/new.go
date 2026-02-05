@@ -60,6 +60,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 		}
 	} else if useMultiLine {
 		// Multiline mode: terminal input with continuation prompt
+		fmt.Println("(Enter two blank lines to finish)")
 		command, err := scanMultiLine("Command> ", ".......> ")
 		if err != nil {
 			return err
@@ -142,33 +143,22 @@ func scanMultiLineFromReader(r io.Reader, continuationPrompt string) (string, er
 	return strings.Join(lines, "\n"), nil
 }
 
-// createSnippetWithEditor opens $EDITOR with a template for creating a new snippet.
+// createSnippetWithEditor opens $EDITOR for entering snippet body only.
 func createSnippetWithEditor(title string) (*core.Snippet, error) {
-	// Create a new snippet with the title
-	snippet := core.NewSnippet(title)
-
-	// Serialize snippet to markdown
-	content, err := serializeSnippetForEdit(snippet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize snippet: %w", err)
-	}
-
-	// Open in editor
-	editedContent, err := editContentInEditor(content, "snipgo-new-")
+	// Open editor with empty content for body input
+	editedContent, err := editContentInEditor([]byte(""), "snipgo-new-")
 	if err != nil {
 		return nil, fmt.Errorf("creation cancelled: %w", err)
 	}
 
-	// Parse edited content
-	editedSnippet, err := parseSnippetFromEdit(editedContent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse edited content: %w", err)
+	body := strings.TrimSpace(string(editedContent))
+	if body == "" {
+		return nil, fmt.Errorf("command cannot be empty")
 	}
 
-	// Validate edited snippet
-	if err := editedSnippet.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid snippet: %w", err)
-	}
+	// Create snippet with title and edited body
+	snippet := core.NewSnippet(title)
+	snippet.Body = body
 
-	return editedSnippet, nil
+	return snippet, nil
 }
