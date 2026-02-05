@@ -190,6 +190,11 @@ Exposes Go methods to frontend via Wails IPC:
 
 **Language:** All commits, PR titles, PR descriptions, and branch names must be written in **English**.
 
+**CRITICAL: Always branch before coding!**
+- NEVER commit directly to main branch
+- ALWAYS create a feature branch BEFORE making any code changes
+- All changes go through PR review
+
 **Starting work:**
 1. Create a new branch from the latest main branch
    ```bash
@@ -197,10 +202,13 @@ Exposes Go methods to frontend via Wails IPC:
    git pull origin main
    git checkout -b feature/branch-name
    ```
+2. Make your changes on the feature branch
+3. Push and create PR into main
 
 **Creating PR:**
 - Use `gh` CLI to create PR into main branch
   ```bash
+  git push -u origin feature/branch-name
   gh pr create --base main
   ```
 
@@ -241,6 +249,10 @@ Exposes Go methods to frontend via Wails IPC:
 2. Review and finalize plan
 3. Implement step by step
 4. After completion, write `prompts/{feature}-implementation-summary.md`
+
+**Claude Code Plan Mode:**
+- When using Claude Code's plan mode, save the finalized plan to `prompts/` directory before exiting plan mode
+- File naming: `{feature-name}-plan.md`
 
 ### Go Code Style (from .cursorrules)
 
