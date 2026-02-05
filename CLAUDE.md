@@ -254,6 +254,36 @@ Exposes Go methods to frontend via Wails IPC:
 - When using Claude Code's plan mode, save the finalized plan to `prompts/` directory before exiting plan mode
 - File naming: `{feature-name}-plan.md`
 
+### Test-Driven Development (TDD)
+
+**CRITICAL: Write tests BEFORE implementation code!**
+
+Follow the Red-Green-Refactor cycle:
+1. **Red**: Write a failing test that defines expected behavior
+2. **Green**: Write minimal code to make the test pass
+3. **Refactor**: Clean up code while keeping tests green
+
+**TDD Workflow:**
+```
+1. Understand the requirement
+2. Write test cases first (describe expected behavior)
+3. Run tests - verify they fail (Red)
+4. Implement the feature
+5. Run tests - verify they pass (Green)
+6. Refactor if needed (keep tests passing)
+7. Commit
+```
+
+**When to apply TDD:**
+- New features with clear input/output behavior
+- Bug fixes (write test that reproduces bug first)
+- Refactoring existing code
+
+**Exceptions (where TDD may not apply):**
+- Exploratory/prototype code (but add tests before merging)
+- Pure UI layout changes (use visual testing instead)
+- Third-party integration spikes
+
 ### Go Code Style (from .cursorrules)
 
 - **File naming:** lowercase with underscores (`snippet_test.go`, `file_watcher.go`)
