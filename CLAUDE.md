@@ -190,6 +190,11 @@ Exposes Go methods to frontend via Wails IPC:
 
 **Language:** All commits, PR titles, PR descriptions, and branch names must be written in **English**.
 
+**CRITICAL: Always branch before coding!**
+- NEVER commit directly to main branch
+- ALWAYS create a feature branch BEFORE making any code changes
+- All changes go through PR review
+
 **Starting work:**
 1. Create a new branch from the latest main branch
    ```bash
@@ -197,10 +202,13 @@ Exposes Go methods to frontend via Wails IPC:
    git pull origin main
    git checkout -b feature/branch-name
    ```
+2. Make your changes on the feature branch
+3. Push and create PR into main
 
 **Creating PR:**
 - Use `gh` CLI to create PR into main branch
   ```bash
+  git push -u origin feature/branch-name
   gh pr create --base main
   ```
 
@@ -241,6 +249,40 @@ Exposes Go methods to frontend via Wails IPC:
 2. Review and finalize plan
 3. Implement step by step
 4. After completion, write `prompts/{feature}-implementation-summary.md`
+
+**Claude Code Plan Mode:**
+- When using Claude Code's plan mode, save the finalized plan to `prompts/` directory before exiting plan mode
+- File naming: `{feature-name}-plan.md`
+
+### Test-Driven Development (TDD)
+
+**CRITICAL: Write tests BEFORE implementation code!**
+
+Follow the Red-Green-Refactor cycle:
+1. **Red**: Write a failing test that defines expected behavior
+2. **Green**: Write minimal code to make the test pass
+3. **Refactor**: Clean up code while keeping tests green
+
+**TDD Workflow:**
+```
+1. Understand the requirement
+2. Write test cases first (describe expected behavior)
+3. Run tests - verify they fail (Red)
+4. Implement the feature
+5. Run tests - verify they pass (Green)
+6. Refactor if needed (keep tests passing)
+7. Commit
+```
+
+**When to apply TDD:**
+- New features with clear input/output behavior
+- Bug fixes (write test that reproduces bug first)
+- Refactoring existing code
+
+**Exceptions (where TDD may not apply):**
+- Exploratory/prototype code (but add tests before merging)
+- Pure UI layout changes (use visual testing instead)
+- Third-party integration spikes
 
 ### Go Code Style (from .cursorrules)
 
