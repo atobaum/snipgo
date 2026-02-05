@@ -100,8 +100,14 @@ func runNew(cmd *cobra.Command, args []string) error {
 // Two consecutive blank lines finish the input.
 func scanMultiLine(firstPrompt, continuationPrompt string) (string, error) {
 	fmt.Print(firstPrompt)
+	return scanMultiLineFromReader(os.Stdin, continuationPrompt)
+}
 
-	scanner := bufio.NewScanner(os.Stdin)
+// scanMultiLineFromReader reads multiline input from the given reader.
+// Two consecutive blank lines finish the input. This function is separated
+// for testability.
+func scanMultiLineFromReader(r io.Reader, continuationPrompt string) (string, error) {
+	scanner := bufio.NewScanner(r)
 	var lines []string
 	emptyLineCount := 0
 
@@ -120,7 +126,9 @@ func scanMultiLine(firstPrompt, continuationPrompt string) (string, error) {
 			lines = append(lines, line)
 		}
 
-		fmt.Print(continuationPrompt)
+		if continuationPrompt != "" {
+			fmt.Print(continuationPrompt)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
