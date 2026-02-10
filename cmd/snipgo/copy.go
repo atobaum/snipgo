@@ -49,7 +49,7 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables
-	expandedBody, err := expandSnippetBody(topResult.Snippet, providedVars, raw, isTerminal)
+	expandedBody, err := expandSnippetBody(topResult.Snippet, providedVars, raw, isTerminal, varHistory)
 	if err != nil {
 		return err
 	}

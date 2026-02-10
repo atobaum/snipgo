@@ -5,8 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/spf13/cobra"
 	"snipgo/internal/tmpl"
+
+	"github.com/spf13/cobra"
 )
 
 var execCmd = &cobra.Command{
@@ -59,7 +60,7 @@ func runExec(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables (interactive prompts if needed)
-	expandedBody, err := expandSnippetBody(selected, providedVars, raw, true)
+	expandedBody, err := expandSnippetBody(selected, providedVars, raw, true, varHistory)
 	if err != nil {
 		return err
 	}

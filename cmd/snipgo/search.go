@@ -101,7 +101,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables
-	expandedBody, err := expandSnippetBody(selected, providedVars, raw, isTerminal)
+	expandedBody, err := expandSnippetBody(selected, providedVars, raw, isTerminal, varHistory)
 	if err != nil {
 		return err
 	}

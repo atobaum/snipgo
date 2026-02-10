@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"snipgo/internal/core"
+	"snipgo/internal/history"
 	"snipgo/internal/tmpl"
 )
 
@@ -46,7 +47,8 @@ func mergeVariables(bodyVarNames []string, frontmatterVars map[string]*tmpl.Vari
 
 // promptForVariables interactively prompts the user for missing variable values.
 // Uses the choice display format from D11.
-func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[string]string, error) {
+// Priority: CLI -v flag > frontmatter default > history last-used > empty
+func promptForVariables(vars []*tmpl.Variable, provided map[string]string, hist *history.VarHistory) (map[string]string, error) {
 	values := make(map[string]string)
 	// Copy provided values first
 	for k, v := range provided {
@@ -60,13 +62,22 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[
 			continue // Already provided via -v flag
 		}
 
+		// Determine default: frontmatter default > history last-used > empty
+		defaultValue := v.Default
+		if defaultValue == "" && hist != nil {
+			histValues := hist.Get(v.Name)
+			if len(histValues) > 0 {
+				defaultValue = histValues[0] // Most recent value
+			}
+		}
+
 		// Build prompt
 		prompt := v.Name
 		if v.Description != "" {
 			prompt += " (" + v.Description + ")"
 		}
-		if v.Default != "" {
-			prompt += " [" + v.Default + "]"
+		if defaultValue != "" {
+			prompt += " [" + defaultValue + "]"
 		}
 
 		var input string
@@ -75,15 +86,15 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[
 			fmt.Fprintf(os.Stderr, "%s:\n", prompt)
 			for i, choice := range v.Choices {
 				suffix := ""
-				if choice == v.Default {
+				if choice == defaultValue {
 					suffix = " (default)"
 				}
 				fmt.Fprintf(os.Stderr, "  %d) %s%s\n", i+1, choice, suffix)
 			}
 			defaultNum := "1"
-			if v.Default != "" {
+			if defaultValue != "" {
 				for i, c := range v.Choices {
-					if c == v.Default {
+					if c == defaultValue {
 						defaultNum = fmt.Sprintf("%d", i+1)
 						break
 					}
@@ -100,7 +111,7 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[
 			input = strings.TrimSpace(scanner.Text())
 
 			if input == "" {
-				input = v.Default
+				input = defaultValue
 			} else {
 				// Check if input is a number
 				if num, err := strconv.Atoi(input); err == nil {
@@ -118,8 +129,8 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[
 				return nil, fmt.Errorf("no input received")
 			}
 			input = strings.TrimSpace(scanner.Text())
-			if input == "" && v.Default != "" {
-				input = v.Default
+			if input == "" && defaultValue != "" {
+				input = defaultValue
 			}
 		}
 
@@ -133,7 +144,8 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string) (map[
 
 // expandSnippetBody extracts variables, merges with provided values and defaults,
 // and returns the expanded body. If interactive and missing values, prompts user.
-func expandSnippetBody(snippet *core.Snippet, providedVars map[string]string, raw bool, interactive bool) (string, error) {
+// After successful expansion, saves all values to history.
+func expandSnippetBody(snippet *core.Snippet, providedVars map[string]string, raw bool, interactive bool, hist *history.VarHistory) (string, error) {
 	if raw {
 		return snippet.Body, nil
 	}
@@ -176,7 +188,7 @@ func expandSnippetBody(snippet *core.Snippet, providedVars map[string]string, ra
 			return "", fmt.Errorf("missing values for variables: %s", strings.Join(names, ", "))
 		}
 		// Prompt for missing
-		prompted, err := promptForVariables(vars, values)
+		prompted, err := promptForVariables(vars, values, hist)
 		if err != nil {
 			return "", err
 		}
@@ -187,5 +199,16 @@ func expandSnippetBody(snippet *core.Snippet, providedVars map[string]string, ra
 	if err != nil {
 		return "", err
 	}
+
+	// Save all values to history (graceful degradation if hist is nil)
+	if hist != nil {
+		for k, v := range values {
+			if err := hist.Add(k, v); err != nil {
+				// Log but don't fail - history is best-effort
+				fmt.Fprintf(os.Stderr, "warning: failed to save variable to history: %v\n", err)
+			}
+		}
+	}
+
 	return result.Expanded, nil
 }
