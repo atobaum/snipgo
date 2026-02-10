@@ -10,4 +10,11 @@ export interface Snippet {
   body: string;
 }
 
+export interface Variable {
+  name: string;
+  description?: string;
+  default?: string;
+  choices?: string[];
+}
+
 

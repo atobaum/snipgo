@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Snippet } from "../types";
+import { Snippet, Variable } from "../types";
 import { app } from "../bridge";
 import { useSnippetForm } from "../hooks/useSnippetForm";
 import { useSnippetAutoSave } from "../hooks/useSnippetAutoSave";
@@ -9,6 +9,7 @@ import { LanguageSelector } from "./LanguageSelector";
 import { SnippetMetaInfo } from "./SnippetMetaInfo";
 import { ActionButtons } from "./ActionButtons";
 import { CodeEditor } from "./CodeEditor";
+import { VariablePromptModal } from "./VariablePromptModal";
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
@@ -32,6 +33,8 @@ export function SnippetEditor({
   const [rawMode, setRawMode] = useState(false);
   const [rawContent, setRawContent] = useState("");
   const [wordWrap, setWordWrap] = useState(true);
+  const [showVariableModal, setShowVariableModal] = useState(false);
+  const [pendingVariables, setPendingVariables] = useState<Variable[]>([]);
 
   // Auto-save with debouncing
   const { saveStatus } = useSnippetAutoSave({
@@ -138,6 +141,45 @@ ${form.body}`;
     setRawMode(!rawMode);
   }, [rawMode, snippet, form]);
 
+  const handleCopyWithVariables = useCallback((variables: Variable[]) => {
+    setPendingVariables(variables);
+    setShowVariableModal(true);
+  }, []);
+
+  const handleVariableSubmit = useCallback(
+    async (values: Record<string, string>) => {
+      if (!snippet) return;
+
+      try {
+        // Expand snippet with variable values
+        const expanded = await app.ExpandSnippet(snippet.id, values);
+
+        // Copy to clipboard
+        await app.CopyToClipboard(expanded);
+
+        // Save variable history
+        await app.SaveVariableHistory(values);
+
+        // Close modal
+        setShowVariableModal(false);
+        setPendingVariables([]);
+
+        alert("Copied expanded snippet to clipboard!");
+      } catch (err) {
+        alert(
+          "Failed to copy expanded snippet: " +
+            (err instanceof Error ? err.message : "Unknown error")
+        );
+      }
+    },
+    [snippet]
+  );
+
+  const handleVariableCancel = useCallback(() => {
+    setShowVariableModal(false);
+    setPendingVariables([]);
+  }, []);
+
   if (!snippet) {
     return (
       <div className="p-8 text-center text-gray-500">
@@ -194,7 +236,12 @@ ${form.body}`;
         </div>
 
         {/* Actions */}
-        <ActionButtons body={form.body} onDelete={handleDelete} />
+        <ActionButtons
+          body={form.body}
+          snippetId={snippet.id}
+          onDelete={handleDelete}
+          onCopyWithVariables={handleCopyWithVariables}
+        />
       </div>
 
       {/* Editor */}
@@ -208,6 +255,15 @@ ${form.body}`;
           rawContent={rawContent}
         />
       </div>
+
+      {/* Variable Prompt Modal */}
+      {showVariableModal && (
+        <VariablePromptModal
+          variables={pendingVariables}
+          onSubmit={handleVariableSubmit}
+          onCancel={handleVariableCancel}
+        />
+      )}
     </div>
   );
 }

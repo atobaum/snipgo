@@ -1,7 +1,7 @@
 // Import Wails generated bindings
 import * as WailsApp from '../wailsjs/go/app/App';
 import { core } from '../wailsjs/go/models';
-import { Snippet } from './types';
+import { Snippet, Variable } from './types';
 
 // Convert Wails core.Snippet to our Snippet type
 function convertSnippet(wailsSnippet: core.Snippet): Snippet {
@@ -53,6 +53,11 @@ export interface App {
   GetDataDirectory(): Promise<string>;
   SetDataDirectory(path: string): Promise<void>;
   BrowseForDirectory(): Promise<string>;
+  // Template/Variable operations
+  ExtractVariables(snippetID: string): Promise<Variable[]>;
+  ExpandSnippet(snippetID: string, values: Record<string, string>): Promise<string>;
+  GetVariableHistory(varName: string): Promise<string[]>;
+  SaveVariableHistory(values: Record<string, string>): Promise<void>;
 }
 
 // Use Wails generated bindings with type conversion
@@ -85,4 +90,12 @@ export const app: App = {
   GetDataDirectory: WailsApp.GetDataDirectory,
   SetDataDirectory: WailsApp.SetDataDirectory,
   BrowseForDirectory: WailsApp.BrowseForDirectory,
+  // Template/Variable operations
+  ExtractVariables: async (snippetID: string) => {
+    const result = await WailsApp.ExtractVariables(snippetID);
+    return result as Variable[];
+  },
+  ExpandSnippet: WailsApp.ExpandSnippet,
+  GetVariableHistory: WailsApp.GetVariableHistory,
+  SaveVariableHistory: WailsApp.SaveVariableHistory,
 };

@@ -12,6 +12,9 @@ vi.mock("../bridge", () => ({
     ReloadSnippets: vi.fn().mockResolvedValue(undefined),
     CopyToClipboard: vi.fn().mockResolvedValue(undefined),
     GetAllTags: vi.fn().mockResolvedValue([]),
+    ExtractVariables: vi.fn().mockResolvedValue([]),
+    ExpandSnippet: vi.fn().mockResolvedValue(""),
+    SaveVariableHistory: vi.fn().mockResolvedValue(undefined),
   },
 }));
 

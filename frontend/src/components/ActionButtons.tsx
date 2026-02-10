@@ -1,13 +1,21 @@
 import { useState, useRef, useCallback } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
 import { app } from "../bridge";
+import { Variable } from "../types";
 
 interface ActionButtonsProps {
   body: string;
+  snippetId: string;
   onDelete: () => void;
+  onCopyWithVariables: (variables: Variable[]) => void;
 }
 
-export function ActionButtons({ body, onDelete }: ActionButtonsProps) {
+export function ActionButtons({
+  body,
+  snippetId,
+  onDelete,
+  onCopyWithVariables,
+}: ActionButtonsProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -19,8 +27,17 @@ export function ActionButtons({ body, onDelete }: ActionButtonsProps) {
 
   const handleCopyToClipboard = async () => {
     try {
-      await app.CopyToClipboard(body);
-      alert("Copied to clipboard!");
+      // Check if snippet has variables
+      const variables = await app.ExtractVariables(snippetId);
+
+      if (variables.length > 0) {
+        // Has variables - show modal
+        onCopyWithVariables(variables);
+      } else {
+        // No variables - copy raw body
+        await app.CopyToClipboard(body);
+        alert("Copied to clipboard!");
+      }
     } catch (err) {
       alert(
         "Failed to copy to clipboard: " +
