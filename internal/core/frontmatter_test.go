@@ -1,6 +1,7 @@
 package core
 
 import (
+	"snipgo/internal/tmpl"
 	"testing"
 	"time"
 )
@@ -362,4 +363,311 @@ func contains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestParseFrontmatter_WithVariables(t *testing.T) {
+	content := []byte(`---
+id: test-var-id
+title: Deploy Script
+description: ""
+tags: []
+language: bash
+is_favorite: false
+created_at: 2026-01-01T00:00:00Z
+updated_at: 2026-01-01T00:00:00Z
+variables:
+  SERVER:
+    description: Target server
+    default: prod-01
+  ENV:
+    description: Environment
+    choices:
+      - staging
+      - production
+---
+
+ssh ${SERVER} "deploy --env ${ENV}"`)
+
+	snippet, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("ParseFrontmatter() error = %v", err)
+	}
+
+	// Verify Variables map is populated
+	if snippet.Variables == nil {
+		t.Fatal("ParseFrontmatter() Variables is nil, want non-nil map")
+	}
+
+	if len(snippet.Variables) != 2 {
+		t.Errorf("ParseFrontmatter() Variables length = %v, want 2", len(snippet.Variables))
+	}
+
+	// Verify SERVER variable
+	serverVar, exists := snippet.Variables["SERVER"]
+	if !exists {
+		t.Fatal("ParseFrontmatter() Variables[SERVER] does not exist")
+	}
+
+	if serverVar.Name != "SERVER" {
+		t.Errorf("ParseFrontmatter() Variables[SERVER].Name = %v, want SERVER", serverVar.Name)
+	}
+
+	if serverVar.Description != "Target server" {
+		t.Errorf("ParseFrontmatter() Variables[SERVER].Description = %v, want 'Target server'", serverVar.Description)
+	}
+
+	if serverVar.Default != "prod-01" {
+		t.Errorf("ParseFrontmatter() Variables[SERVER].Default = %v, want 'prod-01'", serverVar.Default)
+	}
+
+	// Verify ENV variable
+	envVar, exists := snippet.Variables["ENV"]
+	if !exists {
+		t.Fatal("ParseFrontmatter() Variables[ENV] does not exist")
+	}
+
+	if envVar.Name != "ENV" {
+		t.Errorf("ParseFrontmatter() Variables[ENV].Name = %v, want ENV", envVar.Name)
+	}
+
+	if envVar.Description != "Environment" {
+		t.Errorf("ParseFrontmatter() Variables[ENV].Description = %v, want 'Environment'", envVar.Description)
+	}
+
+	if len(envVar.Choices) != 2 {
+		t.Errorf("ParseFrontmatter() Variables[ENV].Choices length = %v, want 2", len(envVar.Choices))
+	} else {
+		if envVar.Choices[0] != "staging" {
+			t.Errorf("ParseFrontmatter() Variables[ENV].Choices[0] = %v, want 'staging'", envVar.Choices[0])
+		}
+		if envVar.Choices[1] != "production" {
+			t.Errorf("ParseFrontmatter() Variables[ENV].Choices[1] = %v, want 'production'", envVar.Choices[1])
+		}
+	}
+
+	// Verify body
+	expectedBody := `ssh ${SERVER} "deploy --env ${ENV}"`
+	if snippet.Body != expectedBody {
+		t.Errorf("ParseFrontmatter() Body = %v, want %v", snippet.Body, expectedBody)
+	}
+}
+
+func TestParseFrontmatter_WithoutVariables(t *testing.T) {
+	content := []byte(`---
+id: test-id
+title: Simple Script
+description: A simple script
+tags: []
+language: bash
+is_favorite: false
+created_at: 2026-01-01T00:00:00Z
+updated_at: 2026-01-01T00:00:00Z
+---
+
+echo "hello world"`)
+
+	snippet, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("ParseFrontmatter() error = %v", err)
+	}
+
+	// Verify Variables is nil (backward compatibility)
+	if snippet.Variables != nil {
+		t.Errorf("ParseFrontmatter() Variables = %v, want nil for backward compatibility", snippet.Variables)
+	}
+}
+
+func TestSerializeFrontmatter_WithVariables(t *testing.T) {
+	snippet := &Snippet{
+		ID:          "test-var-id",
+		Title:       "Deploy Script",
+		Description: "",
+		Tags:        []string{},
+		Language:    "bash",
+		IsFavorite:  false,
+		CreatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Variables: map[string]*tmpl.Variable{
+			"SERVER": {
+				Name:        "SERVER",
+				Description: "Target server",
+				Default:     "prod-01",
+			},
+			"ENV": {
+				Name:        "ENV",
+				Description: "Environment",
+				Choices:     []string{"staging", "production"},
+			},
+		},
+		Body: `ssh ${SERVER} "deploy --env ${ENV}"`,
+	}
+
+	content, err := SerializeFrontmatter(snippet)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter() error = %v", err)
+	}
+
+	// Verify round-trip: parse -> serialize -> parse gives same result
+	parsed, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter() round-trip parse error = %v", err)
+	}
+
+	// Verify Variables survived round-trip
+	if parsed.Variables == nil {
+		t.Fatal("SerializeFrontmatter() round-trip Variables is nil")
+	}
+
+	if len(parsed.Variables) != 2 {
+		t.Errorf("SerializeFrontmatter() round-trip Variables length = %v, want 2", len(parsed.Variables))
+	}
+
+	// Verify SERVER variable
+	serverVar, exists := parsed.Variables["SERVER"]
+	if !exists {
+		t.Fatal("SerializeFrontmatter() round-trip Variables[SERVER] does not exist")
+	}
+
+	if serverVar.Name != "SERVER" {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[SERVER].Name = %v, want SERVER", serverVar.Name)
+	}
+
+	if serverVar.Description != "Target server" {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[SERVER].Description = %v, want 'Target server'", serverVar.Description)
+	}
+
+	if serverVar.Default != "prod-01" {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[SERVER].Default = %v, want 'prod-01'", serverVar.Default)
+	}
+
+	// Verify ENV variable
+	envVar, exists := parsed.Variables["ENV"]
+	if !exists {
+		t.Fatal("SerializeFrontmatter() round-trip Variables[ENV] does not exist")
+	}
+
+	if envVar.Name != "ENV" {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[ENV].Name = %v, want ENV", envVar.Name)
+	}
+
+	if len(envVar.Choices) != 2 {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[ENV].Choices length = %v, want 2", len(envVar.Choices))
+	}
+}
+
+func TestSerializeFrontmatter_WithoutVariables(t *testing.T) {
+	snippet := &Snippet{
+		ID:          "test-id",
+		Title:       "Simple Script",
+		Description: "A simple script",
+		Tags:        []string{},
+		Language:    "bash",
+		IsFavorite:  false,
+		CreatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Variables:   nil,
+		Body:        `echo "hello world"`,
+	}
+
+	content, err := SerializeFrontmatter(snippet)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter() error = %v", err)
+	}
+
+	contentStr := string(content)
+
+	// Verify NO "variables:" line in output (due to omitempty)
+	if contains(contentStr, "variables:") {
+		t.Error("SerializeFrontmatter() output contains 'variables:' when Variables is nil, want no variables field")
+	}
+}
+
+func TestParseFrontmatter_VariablesWithChoices(t *testing.T) {
+	content := []byte(`---
+id: test-choices-id
+title: Test Choices
+description: ""
+tags: []
+language: bash
+is_favorite: false
+created_at: 2026-01-01T00:00:00Z
+updated_at: 2026-01-01T00:00:00Z
+variables:
+  OPTION:
+    description: Select an option
+    choices:
+      - option1
+      - option2
+      - option3
+---
+
+echo ${OPTION}`)
+
+	snippet, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("ParseFrontmatter() error = %v", err)
+	}
+
+	optionVar, exists := snippet.Variables["OPTION"]
+	if !exists {
+		t.Fatal("ParseFrontmatter() Variables[OPTION] does not exist")
+	}
+
+	if len(optionVar.Choices) != 3 {
+		t.Errorf("ParseFrontmatter() Variables[OPTION].Choices length = %v, want 3", len(optionVar.Choices))
+	}
+
+	expectedChoices := []string{"option1", "option2", "option3"}
+	for i, choice := range optionVar.Choices {
+		if choice != expectedChoices[i] {
+			t.Errorf("ParseFrontmatter() Variables[OPTION].Choices[%d] = %v, want %v", i, choice, expectedChoices[i])
+		}
+	}
+}
+
+func TestSerializeFrontmatter_RoundTripPreservesChoicesOrdering(t *testing.T) {
+	snippet := &Snippet{
+		ID:          "test-ordering-id",
+		Title:       "Test Ordering",
+		Description: "",
+		Tags:        []string{},
+		Language:    "bash",
+		IsFavorite:  false,
+		CreatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Variables: map[string]*tmpl.Variable{
+			"COLOR": {
+				Name:        "COLOR",
+				Description: "Select a color",
+				Choices:     []string{"red", "green", "blue", "yellow"},
+			},
+		},
+		Body: `echo ${COLOR}`,
+	}
+
+	content, err := SerializeFrontmatter(snippet)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter() error = %v", err)
+	}
+
+	parsed, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter() round-trip parse error = %v", err)
+	}
+
+	colorVar, exists := parsed.Variables["COLOR"]
+	if !exists {
+		t.Fatal("SerializeFrontmatter() round-trip Variables[COLOR] does not exist")
+	}
+
+	if len(colorVar.Choices) != 4 {
+		t.Errorf("SerializeFrontmatter() round-trip Variables[COLOR].Choices length = %v, want 4", len(colorVar.Choices))
+	}
+
+	expectedChoices := []string{"red", "green", "blue", "yellow"}
+	for i, choice := range colorVar.Choices {
+		if choice != expectedChoices[i] {
+			t.Errorf("SerializeFrontmatter() round-trip Variables[COLOR].Choices[%d] = %v, want %v", i, choice, expectedChoices[i])
+		}
+	}
 }

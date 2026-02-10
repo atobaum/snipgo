@@ -43,6 +43,11 @@ func ParseFrontmatter(content []byte) (*Snippet, error) {
 		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
 	}
 
+	// Hydrate Variable.Name from map key (D9)
+	for name, v := range snippet.Variables {
+		v.Name = name
+	}
+
 	// Extract body (everything after frontmatter)
 	bodyLines := lines[bodyStartIndex:]
 	body := strings.Join(bodyLines, "\n")
