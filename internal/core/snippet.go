@@ -4,8 +4,9 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/oklog/ulid/v2"
 	"snipgo/internal/tmpl"
+
+	"github.com/oklog/ulid/v2"
 )
 
 // Snippet represents a code snippet with metadata
