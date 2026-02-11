@@ -32,8 +32,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		slog.Warn("config file does not exist, using defaults", "path", configPath)
-		// Use default config
+		if os.Getenv("SNIPGO_CONFIG_PATH") != "" {
+			slog.Warn("config file does not exist, using defaults", "path", configPath)
+		} else {
+			slog.Debug("config file does not exist, using defaults", "path", configPath)
+		}
+		config.DataDirectory = expandPath(config.DataDirectory)
 		return config, nil
 	}
 
@@ -50,9 +54,10 @@ func LoadConfig() (*Config, error) {
 
 	// Merge file config (only if set)
 	if fileConfig.DataDirectory != "" {
-		config.DataDirectory = expandPath(fileConfig.DataDirectory)
+		config.DataDirectory = fileConfig.DataDirectory
 	}
 
+	config.DataDirectory = expandPath(config.DataDirectory)
 	return config, nil
 }
 
