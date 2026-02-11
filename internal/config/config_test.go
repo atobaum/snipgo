@@ -155,6 +155,13 @@ func TestLoadConfig(t *testing.T) {
 				return
 			}
 
+			if tt.wantErr {
+				if tt.cleanup != nil {
+					tt.cleanup()
+				}
+				return
+			}
+
 			if cfg == nil {
 				t.Error("LoadConfig() returned nil config")
 				if tt.cleanup != nil {
@@ -168,8 +175,9 @@ func TestLoadConfig(t *testing.T) {
 					t.Errorf("LoadConfig() DataDirectory = %v, want %v", cfg.DataDirectory, tt.wantDir)
 				}
 			} else {
-				// Verify default is used (with ~, not expanded)
-				expected := "~/.config/snipgo/snippets"
+				// Verify default is used (expanded, not literal ~)
+				homeDir, _ := os.UserHomeDir()
+				expected := filepath.Join(homeDir, ".config", "snipgo", "snippets")
 				if cfg.DataDirectory != expected {
 					t.Errorf("LoadConfig() DataDirectory = %v, want default %v", cfg.DataDirectory, expected)
 				}
