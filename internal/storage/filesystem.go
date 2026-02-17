@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,19 +33,19 @@ func NewFileSystem() (*FileSystem, error) {
 }
 
 // GetSnippetsDir returns the snippets directory path
-func (fs *FileSystem) GetSnippetsDir() string {
-	return fs.snippetsDir
+func (f *FileSystem) GetSnippetsDir() string {
+	return f.snippetsDir
 }
 
 // ListFiles returns all .md files in the snippets directory
-func (fs *FileSystem) ListFiles() ([]string, error) {
+func (f *FileSystem) ListFiles() ([]string, error) {
 	var files []string
 
-	err := filepath.Walk(fs.snippetsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(f.snippetsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(strings.ToLower(path), ".md") {
+		if !d.IsDir() && strings.HasSuffix(strings.ToLower(path), ".md") {
 			files = append(files, path)
 		}
 		return nil
@@ -58,7 +59,7 @@ func (fs *FileSystem) ListFiles() ([]string, error) {
 }
 
 // ReadFile reads the content of a file
-func (fs *FileSystem) ReadFile(filepath string) ([]byte, error) {
+func (f *FileSystem) ReadFile(filepath string) ([]byte, error) {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filepath, err)
@@ -67,7 +68,7 @@ func (fs *FileSystem) ReadFile(filepath string) ([]byte, error) {
 }
 
 // WriteFile writes content to a file
-func (fs *FileSystem) WriteFile(filepath string, data []byte) error {
+func (f *FileSystem) WriteFile(filepath string, data []byte) error {
 	if err := os.WriteFile(filepath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", filepath, err)
 	}
@@ -75,7 +76,7 @@ func (fs *FileSystem) WriteFile(filepath string, data []byte) error {
 }
 
 // DeleteFile deletes a file
-func (fs *FileSystem) DeleteFile(filepath string) error {
+func (f *FileSystem) DeleteFile(filepath string) error {
 	if err := os.Remove(filepath); err != nil {
 		return fmt.Errorf("failed to delete file %s: %w", filepath, err)
 	}
@@ -83,7 +84,7 @@ func (fs *FileSystem) DeleteFile(filepath string) error {
 }
 
 // FileExists checks if a file exists
-func (fs *FileSystem) FileExists(filepath string) bool {
+func (f *FileSystem) FileExists(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return err == nil
 }

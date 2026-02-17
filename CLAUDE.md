@@ -107,19 +107,39 @@ FileSystem (internal/storage/filesystem.go) - Disk I/O
 
 ### Core Components
 
+#### internal/core/storage.go - Storage Interface
+
+Defines the `Storage` interface that decouples Manager from filesystem implementation.
+`internal/storage/filesystem.go` implements this interface.
+Enables mock-based testing of Manager without disk I/O.
+
 #### internal/core/manager.go - Central Coordinator
 
 The `Manager` struct is the heart of the application:
 - Maintains in-memory cache of all snippets (`map[string]*Snippet`)
+- Maintains file path index (`map[string]string` — snippet ID to file path) for O(1) lookups
 - Provides thread-safe operations via `sync.RWMutex`
-- Coordinates between storage layer and application logic
+- Coordinates between storage layer (via `Storage` interface) and application logic
 - All snippets loaded into memory on startup for fast search/access
 
+**Key Data Structures:**
+- `snippets map[string]*Snippet` — In-memory snippet cache (key: snippet ID)
+- `fileIndex map[string]string` — Maps snippet ID to file path on disk (O(1) lookup)
+- `storage Storage` — Storage interface for disk operations
+
 **Key Operations:**
-- `LoadAll()` - Loads all `.md` files from disk into memory cache
-- `Save()` - Persists to disk, updates memory, sets `updated_at` timestamp
-- `GetByID()` - Returns copy (not pointer) to prevent mutations
-- `Search()` - Fuzzy search with scoring (title > tags > body)
+- `NewManager(store Storage)` — Creates Manager with injected storage (dependency injection)
+- `NewDefaultManager()` — Convenience constructor using filesystem storage
+- `LoadAll()` — Loads all `.md` files from disk into memory cache and file index
+- `Save()` — Persists to disk, updates memory, sets `updated_at` timestamp
+- `GetByID()` — Returns copy (not pointer) to prevent mutations
+- `Search()` — Fuzzy search with scoring (title > tags > body)
+
+#### internal/core/errors.go - Sentinel Errors
+
+Defines sentinel errors for common conditions:
+- `ErrSnippetNotFound` — Returned by `GetByID()` and `Delete()` when snippet ID doesn't exist
+- Use `errors.Is(err, core.ErrSnippetNotFound)` to check
 
 #### internal/core/frontmatter.go - Data Format
 
@@ -292,6 +312,27 @@ Follow the Red-Green-Refactor cycle:
 - **Error handling:** Explicit, early return pattern preferred
 - **Testing:** Table-driven tests, `*_test.go` files in same package
 
+### Go Best Practices (Enforced)
+
+- **Interfaces over concrete types:** Accept interfaces, return concrete types. See `core.Storage` interface.
+- **Dependency injection:** Constructors accept interfaces. Use `NewManager(store Storage)`, not hard-coded dependencies.
+- **Package-level regex:** Never compile regex inside function bodies. Use `var pattern = regexp.MustCompile(...)` at package level.
+- **Sentinel errors:** Define sentinel errors with `errors.New()` in `errors.go` files. Wrap with `%w`. Check with `errors.Is()`.
+- **sort.Slice:** Use `sort.Slice()` or `sort.SliceStable()` for sorting, never manual bubble/insertion sort.
+- **filepath.WalkDir:** Prefer `filepath.WalkDir` over `filepath.Walk` (more efficient, Go 1.16+).
+- **strings.NewReplacer:** For multiple string replacements, use `strings.NewReplacer` over chained `strings.ReplaceAll`.
+- **No panics in libraries:** Use error returns. Panics only acceptable for truly unrecoverable conditions (e.g., OS entropy failure).
+- **Bounds checks:** Always validate slice/string bounds before truncation.
+- **Avoid variable shadowing:** Never shadow package-level variables with local declarations.
+- **Go file size:** Keep Go source files under 250 lines (excluding tests). Split large files by responsibility.
+
+### Single Source of Truth Principle
+
+- Template variable merge logic: `internal/tmpl/merge.go` (`MergeWithMetadata`)
+- Storage operations: `internal/storage/filesystem.go` (implements `core.Storage` interface)
+- Snippet validation: `internal/core/snippet.go` (`Validate()`)
+- Never duplicate business logic between CLI and GUI layers.
+
 ### TypeScript Code Style (from .cursorrules)
 
 - **Components:** Functional components only, PascalCase naming
@@ -407,3 +448,6 @@ Follow the Red-Green-Refactor cycle:
 5. **Use bridge.ts functions** for type conversion, not raw Wails bindings
 6. **Don't use `--no-verify` or `--no-gpg-sign`** in git commits unless explicitly requested
 7. **Test files belong in same package** as tested code (not separate `_test` package)
+8. **Never compile regex inside function bodies** — use package-level vars
+9. **Always use `core.Storage` interface** when referencing storage operations in core package
+10. **Use `tmpl.MergeWithMetadata()`** for variable merging — do not reimplement

@@ -67,7 +67,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Perform search with filters
-	results := manager.SearchWithFilters(opts)
+	results := app.manager.SearchWithFilters(opts)
 
 	if len(results) == 0 {
 		return nil
@@ -101,7 +101,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables
-	expandedBody, err := expandSnippetBody(selected, providedVars, raw, isTerminal, varHistory)
+	expandedBody, err := expandSnippetBody(selected, providedVars, raw, isTerminal, app.varHistory)
 	if err != nil {
 		return err
 	}

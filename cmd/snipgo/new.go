@@ -88,7 +88,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 	}
 
 	// Save the snippet
-	if err := manager.Save(snippet); err != nil {
+	if err := app.manager.Save(snippet); err != nil {
 		return fmt.Errorf("failed to save snippet: %w", err)
 	}
 

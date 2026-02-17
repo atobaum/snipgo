@@ -44,21 +44,21 @@ func TestNewManager(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
-		t.Fatalf("NewManager() error = %v, want nil", err)
+		t.Fatalf("NewDefaultManager() error = %v, want nil", err)
 	}
 
 	if m == nil {
-		t.Fatal("NewManager() returned nil")
+		t.Fatal("NewDefaultManager() returned nil")
 	}
 
 	if m.snippets == nil {
-		t.Error("NewManager() snippets map is nil")
+		t.Error("NewDefaultManager() snippets map is nil")
 	}
 
 	if m.storage == nil {
-		t.Error("NewManager() storage is nil")
+		t.Error("NewDefaultManager() storage is nil")
 	}
 }
 
@@ -76,7 +76,7 @@ func TestManager_LoadAll(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestManager_Save(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestManager_Delete(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -430,7 +430,7 @@ func TestManager_GetByID(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -510,7 +510,7 @@ func TestManager_GetAll(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -644,7 +644,7 @@ func TestManager_Save_Update(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -707,7 +707,7 @@ func TestManager_Save_Update(t *testing.T) {
 	}
 }
 
-func TestManager_findFileBySnippetID(t *testing.T) {
+func TestManager_fileIndex(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -720,15 +720,17 @@ func TestManager_findFileBySnippetID(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
 
 	// Test with no snippets
-	path := m.findFileBySnippetID("non-existent")
-	if path != "" {
-		t.Errorf("Expected empty path for non-existent snippet, got %v", path)
+	m.mu.RLock()
+	_, exists := m.fileIndex["non-existent"]
+	m.mu.RUnlock()
+	if exists {
+		t.Error("Expected non-existent snippet to not be in file index")
 	}
 
 	// Save a snippet
@@ -741,10 +743,12 @@ func TestManager_findFileBySnippetID(t *testing.T) {
 		t.Fatalf("Failed to save snippet: %v", err)
 	}
 
-	// Test finding the snippet
-	path = m.findFileBySnippetID("test-find-id")
-	if path == "" {
-		t.Error("Expected non-empty path for existing snippet")
+	// Test finding the snippet in file index
+	m.mu.RLock()
+	path, exists := m.fileIndex["test-find-id"]
+	m.mu.RUnlock()
+	if !exists || path == "" {
+		t.Error("Expected snippet to be in file index with non-empty path")
 	}
 }
 

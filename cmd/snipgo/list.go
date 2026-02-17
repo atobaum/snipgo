@@ -17,7 +17,7 @@ var listCmd = &cobra.Command{
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	snippets := manager.GetAll()
+	snippets := app.manager.GetAll()
 
 	if len(snippets) == 0 {
 		fmt.Println("No snippets found.")
@@ -29,7 +29,10 @@ func runList(cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(w, "---\t-----\t----\t--------\t--------")
 
 	for _, snippet := range snippets {
-		idShort := snippet.ID[:8]
+		idShort := snippet.ID
+		if len(idShort) > 8 {
+			idShort = idShort[:8]
+		}
 		tags := strings.Join(snippet.Tags, ", ")
 		if tags == "" {
 			tags = "-"
