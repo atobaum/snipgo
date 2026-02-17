@@ -3,14 +3,18 @@ package main
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"snipgo/internal/config"
 	"snipgo/internal/core"
+	"snipgo/internal/history"
 
 	"github.com/spf13/cobra"
 )
 
 var manager *core.Manager
+var varHistory *history.VarHistory
 
 var (
 	version = "dev"
@@ -40,6 +44,18 @@ var rootCmd = &cobra.Command{
 		if err := manager.LoadAll(); err != nil {
 			slog.Error("failed to load snippets", "error", err)
 			os.Exit(1)
+		}
+
+		// Initialize variable history (graceful degradation)
+		configPath, err := config.GetConfigPath()
+		if err != nil {
+			slog.Warn("failed to get config path for history", "error", err)
+		} else {
+			histPath := filepath.Join(filepath.Dir(configPath), "var_history.json")
+			varHistory, err = history.NewVarHistory(histPath)
+			if err != nil {
+				slog.Warn("failed to load variable history", "error", err)
+			}
 		}
 	},
 }

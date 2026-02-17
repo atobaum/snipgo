@@ -11,6 +11,7 @@ Local-First Snippet Manager built with Go, Wails v2, and React.
 - **CodeMirror Editor**: Syntax highlighting for various languages
 - **Smart Save**: Unsaved changes indicator with confirmation dialog
 - **Auto-save**: Tags and favorites are saved immediately
+- **Dynamic Templates**: Use `${VARIABLE_NAME}` placeholders in snippets for dynamic content at copy/exec time
 
 ## Installation
 
@@ -180,6 +181,64 @@ wails dev  # Development mode
 - Tags and favorites are auto-saved immediately when changed
 - Selected snippet is highlighted in the list
 
+### Dynamic Snippet Templates
+
+Snippets can contain `${VARIABLE_NAME}` placeholders that are resolved when you copy or execute them.
+
+#### Defining Variables
+
+Add variables directly in snippet body using `${VAR_NAME}` syntax:
+
+```bash
+ssh ${SERVER} "deploy --env ${ENV}"
+```
+
+Optionally, add metadata in frontmatter for descriptions, defaults, and choices:
+
+```yaml
+---
+title: Deploy Script
+variables:
+  SERVER:
+    description: "Target server hostname"
+    default: "prod-01.example.com"
+  ENV:
+    description: "Deployment environment"
+    default: "staging"
+    choices:
+      - staging
+      - production
+---
+
+ssh ${SERVER} "deploy --env ${ENV}"
+```
+
+#### CLI Usage
+
+```bash
+# Interactive prompts for variables
+snipgo exec                          # Prompts for each variable
+snipgo copy "deploy"                 # Prompts for each variable
+
+# Provide values via flags
+snipgo exec -v SERVER=prod-01 -v ENV=production
+snipgo copy "deploy" -v SERVER=prod-01
+
+# Skip expansion (output raw template)
+snipgo exec --raw
+snipgo copy "deploy" --raw
+
+# Preview before execution (auto-enabled when variables present)
+snipgo exec --preview
+snipgo exec --no-preview             # Disable auto-preview
+```
+
+Variable history is saved automatically — previously used values appear as defaults in prompts.
+
+#### GUI Usage
+
+When a snippet contains variables, the **Copy Expanded** button appears. Clicking it opens a modal where you can fill in each variable value before copying to clipboard. The regular **Copy** button always copies the raw template.
+
 ## Data Format
 
 Snippets are stored as Markdown files with YAML frontmatter:
@@ -201,6 +260,8 @@ services:
     image: nginx
 ```
 
+Snippets can optionally include a `variables` field for template metadata. See [Dynamic Snippet Templates](#dynamic-snippet-templates) for details.
+
 ## Project Structure
 
 ```
@@ -208,8 +269,10 @@ snipgo/
 ├── cmd/snipgo/       # CLI entry point
 ├── internal/
 │   ├── core/        # Business logic (includes frontmatter parsing)
-│   ├── config/       # Configuration management
-│   └── storage/      # File system operations
+│   ├── config/      # Configuration management
+│   ├── history/     # Variable history persistence
+│   ├── storage/     # File system operations
+│   └── tmpl/        # Template engine (variable parsing & expansion)
 ├── app/              # Wails backend
 ├── frontend/         # React frontend
 └── main.go           # Wails entry point
@@ -230,10 +293,13 @@ snipgo/
 
 ### 🚧 Phase 2: Usability (In Progress)
 
+**Completed Features:**
+- ✅ **Dynamic Templates**: `${VARIABLE_NAME}` placeholders with interactive prompts, defaults, choices, and variable history
+
 **Planned Features:**
 - ⏳ **Hot Reload**: fsnotify-based file watcher for real-time GUI updates when files are modified externally (CLI → GUI sync)
 - ⏳ **CLI Enhancements**: Add flags to `new` command (`-t "Title" --tags "go,api"`) to pre-fill frontmatter before opening editor
-- ⏳ **GUI Improvements**: 
+- ⏳ **GUI Improvements**:
   - Filtering and sorting by `is_favorite`
   - Enhanced tag management and filtering
 

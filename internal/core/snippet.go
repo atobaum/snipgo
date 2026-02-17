@@ -4,20 +4,23 @@ import (
 	"crypto/rand"
 	"time"
 
+	"snipgo/internal/tmpl"
+
 	"github.com/oklog/ulid/v2"
 )
 
 // Snippet represents a code snippet with metadata
 type Snippet struct {
-	ID          string    `yaml:"id" json:"id"`
-	Title       string    `yaml:"title" json:"title"`
-	Description string    `yaml:"description" json:"description"`
-	Tags        []string  `yaml:"tags" json:"tags"`
-	Language    string    `yaml:"language" json:"language"`
-	IsFavorite  bool      `yaml:"is_favorite" json:"is_favorite"`
-	CreatedAt   time.Time `yaml:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `yaml:"updated_at" json:"updated_at"`
-	Body        string    `yaml:"-" json:"body"` // Body is not in frontmatter
+	ID          string                    `yaml:"id" json:"id"`
+	Title       string                    `yaml:"title" json:"title"`
+	Description string                    `yaml:"description" json:"description"`
+	Tags        []string                  `yaml:"tags" json:"tags"`
+	Language    string                    `yaml:"language" json:"language"`
+	IsFavorite  bool                      `yaml:"is_favorite" json:"is_favorite"`
+	CreatedAt   time.Time                 `yaml:"created_at" json:"created_at"`
+	UpdatedAt   time.Time                 `yaml:"updated_at" json:"updated_at"`
+	Variables   map[string]*tmpl.Variable `yaml:"variables,omitempty" json:"variables,omitempty"`
+	Body        string                    `yaml:"-" json:"body"` // Body is not in frontmatter
 }
 
 // generateID generates a ULID (26 characters, lexicographically sortable)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"snipgo/internal/core"
 
@@ -42,6 +43,8 @@ func init() {
 	searchCmd.Flags().StringSliceP("tag", "t", []string{}, "Filter by tags (repeatable, AND logic)")
 	searchCmd.Flags().StringP("language", "L", "", "Filter by language")
 	searchCmd.Flags().StringP("lang", "", "", "Alias for --language")
+	searchCmd.Flags().StringArrayP("var", "v", []string{}, "Variable value in KEY=VALUE format (repeatable)")
+	searchCmd.Flags().Bool("raw", false, "Output raw body without variable expansion")
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
@@ -82,7 +85,28 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Parse variable flags
+	varFlags, _ := cmd.Flags().GetStringArray("var")
+	raw, _ := cmd.Flags().GetBool("raw")
+
+	providedVars, err := parseVarFlags(varFlags)
+	if err != nil {
+		return err
+	}
+
+	// Check if running in terminal for interactive prompts
+	isTerminal := true
+	if fileInfo, _ := os.Stdin.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		isTerminal = false
+	}
+
+	// Expand body with variables
+	expandedBody, err := expandSnippetBody(selected, providedVars, raw, isTerminal, varHistory)
+	if err != nil {
+		return err
+	}
+
 	// Output body to stdout
-	fmt.Print(selected.Body)
+	fmt.Print(expandedBody)
 	return nil
 }

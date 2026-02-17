@@ -3,17 +3,21 @@ package app
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"snipgo/internal/config"
 	"snipgo/internal/core"
+	"snipgo/internal/history"
+	"snipgo/internal/tmpl"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx     context.Context
-	manager *core.Manager
+	ctx        context.Context
+	manager    *core.Manager
+	varHistory *history.VarHistory
 }
 
 // NewApp creates a new App application struct
@@ -23,8 +27,20 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
+	// Initialize variable history
+	configPath, err := config.GetConfigPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config path: %w", err)
+	}
+	historyPath := filepath.Join(filepath.Dir(configPath), "var_history.json")
+	varHistory, err := history.NewVarHistory(historyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create var history: %w", err)
+	}
+
 	app := &App{
-		manager: manager,
+		manager:    manager,
+		varHistory: varHistory,
 	}
 
 	// Load all snippets on startup
@@ -140,4 +156,66 @@ func (a *App) CreateSnippet(title string) (*core.Snippet, error) {
 		return nil, err
 	}
 	return snippet, nil
+}
+
+// ExtractVariables returns variables found in a snippet's body, enriched with
+// frontmatter metadata. Follows D10 merge rules: body is source of truth.
+func (a *App) ExtractVariables(snippetID string) ([]*tmpl.Variable, error) {
+	snippet, err := a.manager.GetByID(snippetID)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyVarNames := tmpl.ExtractVariables(snippet.Body)
+	if len(bodyVarNames) == 0 {
+		return []*tmpl.Variable{}, nil
+	}
+
+	// Merge with frontmatter (D10: body is source of truth)
+	var result []*tmpl.Variable
+	for _, name := range bodyVarNames {
+		if fv, ok := snippet.Variables[name]; ok {
+			v := *fv
+			v.Name = name
+			result = append(result, &v)
+		} else {
+			result = append(result, &tmpl.Variable{Name: name})
+		}
+	}
+	return result, nil
+}
+
+// ExpandSnippet expands a snippet's body with the given variable values.
+func (a *App) ExpandSnippet(snippetID string, values map[string]string) (string, error) {
+	snippet, err := a.manager.GetByID(snippetID)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := tmpl.Expand(snippet.Body, values)
+	if err != nil {
+		return "", err
+	}
+	return result.Expanded, nil
+}
+
+// GetVariableHistory returns recent values for a variable name.
+func (a *App) GetVariableHistory(varName string) ([]string, error) {
+	if a.varHistory == nil {
+		return []string{}, nil
+	}
+	return a.varHistory.Get(varName), nil
+}
+
+// SaveVariableHistory saves variable values to history.
+func (a *App) SaveVariableHistory(values map[string]string) error {
+	if a.varHistory == nil {
+		return nil
+	}
+	for name, value := range values {
+		if err := a.varHistory.Add(name, value); err != nil {
+			return err
+		}
+	}
+	return nil
 }

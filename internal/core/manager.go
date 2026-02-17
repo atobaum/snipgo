@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"snipgo/internal/storage"
+	"snipgo/internal/tmpl"
 )
 
 // Manager manages snippets in memory and on disk
@@ -216,7 +217,7 @@ func copySnippet(s *Snippet) *Snippet {
 	tags := make([]string, len(s.Tags))
 	copy(tags, s.Tags)
 
-	return &Snippet{
+	copy_ := &Snippet{
 		ID:          s.ID,
 		Title:       s.Title,
 		Description: s.Description,
@@ -227,6 +228,21 @@ func copySnippet(s *Snippet) *Snippet {
 		UpdatedAt:   s.UpdatedAt,
 		Body:        s.Body,
 	}
+
+	// Deep copy Variables map
+	if s.Variables != nil {
+		copy_.Variables = make(map[string]*tmpl.Variable, len(s.Variables))
+		for k, v := range s.Variables {
+			varCopy := *v
+			if v.Choices != nil {
+				varCopy.Choices = make([]string, len(v.Choices))
+				copy(varCopy.Choices, v.Choices)
+			}
+			copy_.Variables[k] = &varCopy
+		}
+	}
+
+	return copy_
 }
 
 // GetAllTags returns all unique tags across all snippets, sorted alphabetically
