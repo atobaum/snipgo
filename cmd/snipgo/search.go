@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"snipgo/internal/core"
 
@@ -68,21 +67,6 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	results := manager.SearchWithFilters(opts)
 
 	if len(results) == 0 {
-		// Print helpful message showing active filters
-		msg := "No snippets found"
-		if len(tags) > 0 || language != "" || query != "" {
-			msg += " matching:\n"
-			if len(tags) > 0 {
-				msg += fmt.Sprintf("  Tags: %s (AND)\n", strings.Join(tags, ", "))
-			}
-			if language != "" {
-				msg += fmt.Sprintf("  Language: %s\n", language)
-			}
-			if query != "" {
-				msg += fmt.Sprintf("  Query: %q\n", query)
-			}
-		}
-		fmt.Println(msg)
 		return nil
 	}
 
