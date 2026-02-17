@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
@@ -15,6 +16,11 @@ var copyCmd = &cobra.Command{
 	RunE:  runCopy,
 }
 
+func init() {
+	copyCmd.Flags().StringArrayP("var", "v", []string{}, "Variable value in KEY=VALUE format (repeatable)")
+	copyCmd.Flags().Bool("raw", false, "Copy raw body without variable expansion")
+}
+
 func runCopy(cmd *cobra.Command, args []string) error {
 	query := args[0]
 	results := manager.Search(query)
@@ -25,9 +31,30 @@ func runCopy(cmd *cobra.Command, args []string) error {
 
 	// Get the top result
 	topResult := results[0]
-	body := topResult.Snippet.Body
 
-	if err := clipboard.WriteAll(body); err != nil {
+	// Parse flags
+	varFlags, _ := cmd.Flags().GetStringArray("var")
+	raw, _ := cmd.Flags().GetBool("raw")
+
+	// Parse variable flags
+	providedVars, err := parseVarFlags(varFlags)
+	if err != nil {
+		return err
+	}
+
+	// Check if running in terminal for interactive prompts
+	isTerminal := true
+	if fileInfo, _ := os.Stdin.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		isTerminal = false
+	}
+
+	// Expand body with variables
+	expandedBody, err := expandSnippetBody(topResult.Snippet, providedVars, raw, isTerminal)
+	if err != nil {
+		return err
+	}
+
+	if err := clipboard.WriteAll(expandedBody); err != nil {
 		return fmt.Errorf("failed to copy to clipboard: %w", err)
 	}
 
