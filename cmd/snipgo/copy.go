@@ -23,7 +23,7 @@ func init() {
 
 func runCopy(cmd *cobra.Command, args []string) error {
 	query := args[0]
-	results := manager.Search(query)
+	results := app.manager.Search(query)
 
 	if len(results) == 0 {
 		return fmt.Errorf("no snippets found for query: %s", query)
@@ -49,7 +49,7 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables
-	expandedBody, err := expandSnippetBody(topResult.Snippet, providedVars, raw, isTerminal, varHistory)
+	expandedBody, err := expandSnippetBody(topResult.Snippet, providedVars, raw, isTerminal, app.varHistory)
 	if err != nil {
 		return err
 	}

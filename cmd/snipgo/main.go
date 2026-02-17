@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"snipgo/internal/config"
@@ -13,8 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var manager *core.Manager
-var varHistory *history.VarHistory
+type cliApp struct {
+	manager    *core.Manager
+	varHistory *history.VarHistory
+}
+
+var app *cliApp
 
 var (
 	version = "dev"
@@ -24,39 +28,43 @@ var (
 
 var logLevel string
 
+func newCLIApp() (*cliApp, error) {
+	m, err := core.NewDefaultManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize manager: %w", err)
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	vh, err := history.NewVarHistory(cfg.DataDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize variable history: %w", err)
+	}
+
+	return &cliApp{
+		manager:    m,
+		varHistory: vh,
+	}, nil
+}
+
 var rootCmd = &cobra.Command{
 	Use:     "snipgo",
 	Short:   "SnipGo - Local-First Snippet Manager",
 	Long:    "SnipGo is a local-first snippet manager that stores snippets as Markdown files.",
 	Version: version,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		level, _ := cmd.Flags().GetString("log-level")
 		setupLogger(level)
 
-		// Initialize manager once
 		var err error
-		manager, err = core.NewManager()
+		app, err = newCLIApp()
 		if err != nil {
-			slog.Error("failed to initialize manager", "error", err)
-			os.Exit(1)
+			return err
 		}
-
-		if err := manager.LoadAll(); err != nil {
-			slog.Error("failed to load snippets", "error", err)
-			os.Exit(1)
-		}
-
-		// Initialize variable history (graceful degradation)
-		configPath, err := config.GetConfigPath()
-		if err != nil {
-			slog.Warn("failed to get config path for history", "error", err)
-		} else {
-			histPath := filepath.Join(filepath.Dir(configPath), "var_history.json")
-			varHistory, err = history.NewVarHistory(histPath)
-			if err != nil {
-				slog.Warn("failed to load variable history", "error", err)
-			}
-		}
+		return nil
 	},
 }
 

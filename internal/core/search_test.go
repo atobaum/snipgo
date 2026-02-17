@@ -19,7 +19,7 @@ func TestManager_Search(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -261,7 +261,7 @@ func TestManager_Search_ScoreOrdering(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestManager_Search_TitleMatchExclusion(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}
@@ -511,7 +511,7 @@ func TestManager_SearchWithFilters(t *testing.T) {
 	}
 	defer cleanup()
 
-	m, err := NewManager()
+	m, err := NewDefaultManager()
 	if err != nil {
 		t.Fatalf("Failed to create manager: %v", err)
 	}

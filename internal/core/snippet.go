@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/rand"
+	"fmt"
 	"time"
 
 	"snipgo/internal/tmpl"
@@ -25,9 +26,12 @@ type Snippet struct {
 
 // generateID generates a ULID (26 characters, lexicographically sortable)
 func generateID() string {
-	entropy := rand.Reader
 	ms := ulid.Timestamp(time.Now())
-	return ulid.MustNew(ms, entropy).String()
+	id, err := ulid.New(ms, rand.Reader)
+	if err != nil {
+		panic(fmt.Sprintf("failed to generate ULID: %v", err))
+	}
+	return id.String()
 }
 
 // NewSnippet creates a new snippet with generated ULID and timestamps

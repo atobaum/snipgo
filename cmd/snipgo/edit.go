@@ -16,7 +16,7 @@ var editCmd = &cobra.Command{
 
 func runEdit(cmd *cobra.Command, args []string) error {
 	// Get all snippets
-	snippets := manager.GetAll()
+	snippets := app.manager.GetAll()
 	if len(snippets) == 0 {
 		return fmt.Errorf("no snippets found")
 	}
@@ -56,7 +56,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	editedSnippet.CreatedAt = selected.CreatedAt
 
 	// Save the edited snippet
-	if err := manager.Save(editedSnippet); err != nil {
+	if err := app.manager.Save(editedSnippet); err != nil {
 		return fmt.Errorf("failed to save edited snippet: %w", err)
 	}
 

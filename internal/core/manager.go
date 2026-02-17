@@ -12,26 +12,40 @@ import (
 	"snipgo/internal/tmpl"
 )
 
+var filenameSanitizer = strings.NewReplacer(
+	" ", "_", "/", "_", "\\", "_", ":", "_",
+	"*", "_", "?", "_", `"`, "_", "<", "_",
+	">", "_", "|", "_",
+)
+
 // Manager manages snippets in memory and on disk
 type Manager struct {
-	snippets map[string]*Snippet // key: snippet ID
-	storage  *storage.FileSystem
-	mu       sync.RWMutex
+	snippets  map[string]*Snippet // key: snippet ID
+	fileIndex map[string]string   // key: snippet ID, value: file path
+	storage   Storage
+	mu        sync.RWMutex
 }
 
-// NewManager creates a new Manager instance
-func NewManager() (*Manager, error) {
+// NewManager creates a new Manager instance with the provided storage implementation.
+func NewManager(store Storage) (*Manager, error) {
+	m := &Manager{
+		snippets:  make(map[string]*Snippet),
+		fileIndex: make(map[string]string),
+		storage:   store,
+	}
+	if err := m.LoadAll(); err != nil {
+		return nil, fmt.Errorf("failed to load snippets: %w", err)
+	}
+	return m, nil
+}
+
+// NewDefaultManager creates a Manager with the default filesystem storage.
+func NewDefaultManager() (*Manager, error) {
 	fs, err := storage.NewFileSystem()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create filesystem: %w", err)
 	}
-
-	m := &Manager{
-		snippets: make(map[string]*Snippet),
-		storage:  fs,
-	}
-
-	return m, nil
+	return NewManager(fs)
 }
 
 // LoadAll loads all snippets from disk into memory
@@ -44,8 +58,9 @@ func (m *Manager) LoadAll() error {
 		return fmt.Errorf("failed to list files: %w", err)
 	}
 
-	// Clear existing snippets
+	// Clear existing snippets and file index
 	m.snippets = make(map[string]*Snippet)
+	m.fileIndex = make(map[string]string)
 
 	// Load each file
 	for _, filepath := range files {
@@ -69,6 +84,7 @@ func (m *Manager) LoadAll() error {
 		}
 
 		m.snippets[snippet.ID] = snippet
+		m.fileIndex[snippet.ID] = filepath
 	}
 
 	return nil
@@ -84,7 +100,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 	defer m.mu.Unlock()
 
 	// Check if snippet already exists on disk
-	existingFilePath := m.findFileBySnippetID(snippet.ID)
+	existingFilePath, exists := m.fileIndex[snippet.ID]
 
 	// Update timestamp
 	snippet.UpdateTimestamp()
@@ -97,7 +113,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 
 	// Use existing file path if updating, otherwise generate new filename
 	var filePath string
-	if existingFilePath != "" {
+	if exists {
 		filePath = existingFilePath
 	} else {
 		filename := generateFilename(snippet)
@@ -109,8 +125,9 @@ func (m *Manager) Save(snippet *Snippet) error {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	// Update in-memory index
+	// Update in-memory caches
 	m.snippets[snippet.ID] = snippet
+	m.fileIndex[snippet.ID] = filePath
 
 	return nil
 }
@@ -121,12 +138,12 @@ func (m *Manager) Delete(id string) error {
 	defer m.mu.Unlock()
 
 	if _, exists := m.snippets[id]; !exists {
-		return fmt.Errorf("snippet with ID %s not found", id)
+		return fmt.Errorf("%w: %s", ErrSnippetNotFound, id)
 	}
 
 	// Find and delete the file
-	filePath := m.findFileBySnippetID(id)
-	if filePath != "" {
+	filePath, exists := m.fileIndex[id]
+	if exists {
 		if err := m.storage.DeleteFile(filePath); err != nil {
 			return fmt.Errorf("failed to delete file: %w", err)
 		}
@@ -134,6 +151,7 @@ func (m *Manager) Delete(id string) error {
 
 	// Remove from memory
 	delete(m.snippets, id)
+	delete(m.fileIndex, id)
 
 	return nil
 }
@@ -145,7 +163,7 @@ func (m *Manager) GetByID(id string) (*Snippet, error) {
 
 	snippet, exists := m.snippets[id]
 	if !exists {
-		return nil, fmt.Errorf("snippet with ID %s not found", id)
+		return nil, fmt.Errorf("%w: %s", ErrSnippetNotFound, id)
 	}
 
 	// Return a copy to prevent external modifications
@@ -165,46 +183,10 @@ func (m *Manager) GetAll() []*Snippet {
 	return snippets
 }
 
-// findFileBySnippetID finds the file path for a snippet with the given ID.
-// Returns empty string if not found.
-func (m *Manager) findFileBySnippetID(id string) string {
-	files, err := m.storage.ListFiles()
-	if err != nil {
-		return ""
-	}
-
-	for _, fp := range files {
-		content, err := m.storage.ReadFile(fp)
-		if err != nil {
-			continue
-		}
-
-		fileSnippet, err := ParseFrontmatter(content)
-		if err != nil {
-			continue
-		}
-
-		if fileSnippet.ID == id {
-			return fp
-		}
-	}
-
-	return ""
-}
-
 // generateFilename generates a filename for a snippet
 func generateFilename(snippet *Snippet) string {
 	// Sanitize title for filename
-	title := strings.ReplaceAll(snippet.Title, " ", "_")
-	title = strings.ReplaceAll(title, "/", "_")
-	title = strings.ReplaceAll(title, "\\", "_")
-	title = strings.ReplaceAll(title, ":", "_")
-	title = strings.ReplaceAll(title, "*", "_")
-	title = strings.ReplaceAll(title, "?", "_")
-	title = strings.ReplaceAll(title, "\"", "_")
-	title = strings.ReplaceAll(title, "<", "_")
-	title = strings.ReplaceAll(title, ">", "_")
-	title = strings.ReplaceAll(title, "|", "_")
+	title := filenameSanitizer.Replace(snippet.Title)
 
 	// Use timestamp for uniqueness
 	timestamp := snippet.UpdatedAt.Format("20060102_150405")

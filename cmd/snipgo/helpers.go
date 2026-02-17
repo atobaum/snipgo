@@ -125,14 +125,14 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 		return nil, fmt.Errorf("fzf is not installed. Please install fzf first: https://github.com/junegunn/fzf")
 	}
 
-	// Build fzf input: format each snippet
+	// Build index-aligned lists for fzf
 	var fzfInput strings.Builder
-	snippetMap := make(map[string]*core.Snippet) // Map from formatted line to snippet
+	fzfLines := make([]string, 0, len(snippets))
 	for _, snippet := range snippets {
 		formatted := formatSnippetForFzf(snippet)
 		fzfInput.WriteString(formatted)
 		fzfInput.WriteString("\n")
-		snippetMap[formatted] = snippet
+		fzfLines = append(fzfLines, formatted)
 	}
 
 	// Run fzf
@@ -155,25 +155,12 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 		return nil, fmt.Errorf("no snippet selected")
 	}
 
-	// Find snippet by matching the selected line
-	selectedSnippet, found := snippetMap[selectedLine]
-	if !found {
-		// If exact match not found, try to extract title from the line
-		// Format: [Title] Body #tags
-		if strings.HasPrefix(selectedLine, "[") {
-			endIdx := strings.Index(selectedLine, "]")
-			if endIdx > 0 {
-				title := selectedLine[1:endIdx]
-				// Find snippet by title
-				for _, snippet := range snippets {
-					if snippet.Title == title {
-						return snippet, nil
-					}
-				}
-			}
+	// Find snippet by matching the selected line against fzfLines by index
+	for i, line := range fzfLines {
+		if line == selectedLine {
+			return snippets[i], nil
 		}
-		return nil, fmt.Errorf("could not find selected snippet")
 	}
 
-	return selectedSnippet, nil
+	return nil, fmt.Errorf("could not find selected snippet")
 }

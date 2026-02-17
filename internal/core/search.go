@@ -1,6 +1,7 @@
 package core
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/sahilm/fuzzy"
@@ -77,19 +78,19 @@ func (m *Manager) SearchWithFilters(opts SearchOptions) []*SearchResult {
 	queryLower := strings.ToLower(opts.Query)
 	results := make([]*SearchResult, 0)
 
-	// Build a list of titles for fuzzy search
+	// Build index-aligned lists for fuzzy search
+	candidateList := make([]*Snippet, 0, len(candidates))
 	titles := make([]string, 0, len(candidates))
-	snippetMap := make(map[string]*Snippet)
 	for _, snippet := range candidates {
+		candidateList = append(candidateList, snippet)
 		titles = append(titles, snippet.Title)
-		snippetMap[snippet.Title] = snippet
 	}
 
 	// Fuzzy search on titles
 	matches := fuzzy.Find(opts.Query, titles)
 	titleMatches := make(map[string]bool)
 	for _, match := range matches {
-		snippet := snippetMap[match.Str]
+		snippet := candidateList[match.Index]
 		results = append(results, &SearchResult{
 			Snippet: copySnippet(snippet),
 			Score:   match.Score,
@@ -133,14 +134,9 @@ func (m *Manager) SearchWithFilters(opts SearchOptions) []*SearchResult {
 	}
 
 	// Sort by score (higher is better)
-	// Simple bubble sort for small datasets
-	for i := 0; i < len(results); i++ {
-		for j := i + 1; j < len(results); j++ {
-			if results[i].Score < results[j].Score {
-				results[i], results[j] = results[j], results[i]
-			}
-		}
-	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
 
 	return results
 }

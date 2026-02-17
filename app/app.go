@@ -22,7 +22,7 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp() (*App, error) {
-	manager, err := core.NewManager()
+	manager, err := core.NewDefaultManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
@@ -41,11 +41,6 @@ func NewApp() (*App, error) {
 	app := &App{
 		manager:    manager,
 		varHistory: varHistory,
-	}
-
-	// Load all snippets on startup
-	if err := manager.LoadAll(); err != nil {
-		return nil, fmt.Errorf("failed to load snippets: %w", err)
 	}
 
 	return app, nil
@@ -129,13 +124,9 @@ func (a *App) SetDataDirectory(path string) error {
 	}
 
 	// Recreate manager with new config
-	newManager, err := core.NewManager()
+	newManager, err := core.NewDefaultManager()
 	if err != nil {
 		return fmt.Errorf("failed to create new manager: %w", err)
-	}
-
-	if err := newManager.LoadAll(); err != nil {
-		return fmt.Errorf("failed to load snippets: %w", err)
 	}
 
 	a.manager = newManager
@@ -172,17 +163,7 @@ func (a *App) ExtractVariables(snippetID string) ([]*tmpl.Variable, error) {
 	}
 
 	// Merge with frontmatter (D10: body is source of truth)
-	var result []*tmpl.Variable
-	for _, name := range bodyVarNames {
-		if fv, ok := snippet.Variables[name]; ok {
-			v := *fv
-			v.Name = name
-			result = append(result, &v)
-		} else {
-			result = append(result, &tmpl.Variable{Name: name})
-		}
-	}
-	return result, nil
+	return tmpl.MergeWithMetadata(bodyVarNames, snippet.Variables), nil
 }
 
 // ExpandSnippet expands a snippet's body with the given variable values.

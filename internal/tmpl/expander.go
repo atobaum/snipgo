@@ -2,7 +2,6 @@ package tmpl
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -19,11 +18,10 @@ func Expand(body string, values map[string]string) (*TemplateResult, error) {
 	}
 
 	// Replace unescaped variables
-	pattern := regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 	expanded := body
 
 	// Track positions to avoid replacing escaped variables
-	matches := pattern.FindAllStringSubmatchIndex(expanded, -1)
+	matches := varPattern.FindAllStringSubmatchIndex(expanded, -1)
 	if matches != nil {
 		// Process matches in reverse order to maintain string positions
 		for i := len(matches) - 1; i >= 0; i-- {

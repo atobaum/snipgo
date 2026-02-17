@@ -27,7 +27,7 @@ func init() {
 
 func runExec(cmd *cobra.Command, args []string) error {
 	// Get all snippets
-	snippets := manager.GetAll()
+	snippets := app.manager.GetAll()
 	if len(snippets) == 0 {
 		return fmt.Errorf("no snippets found")
 	}
@@ -60,7 +60,7 @@ func runExec(cmd *cobra.Command, args []string) error {
 	}
 
 	// Expand body with variables (interactive prompts if needed)
-	expandedBody, err := expandSnippetBody(selected, providedVars, raw, true, varHistory)
+	expandedBody, err := expandSnippetBody(selected, providedVars, raw, true, app.varHistory)
 	if err != nil {
 		return err
 	}
@@ -82,12 +82,12 @@ func runExec(cmd *cobra.Command, args []string) error {
 	}
 
 	// Execute body as shell command
-	execCmd := exec.Command("sh", "-c", expandedBody)
-	execCmd.Stdin = os.Stdin
-	execCmd.Stdout = os.Stdout
-	execCmd.Stderr = os.Stderr
+	shellCmd := exec.Command("sh", "-c", expandedBody)
+	shellCmd.Stdin = os.Stdin
+	shellCmd.Stdout = os.Stdout
+	shellCmd.Stderr = os.Stderr
 
-	if err := execCmd.Run(); err != nil {
+	if err := shellCmd.Run(); err != nil {
 		return fmt.Errorf("command execution failed: %w", err)
 	}
 

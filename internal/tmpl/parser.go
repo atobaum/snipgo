@@ -2,16 +2,18 @@ package tmpl
 
 import "regexp"
 
+// varPattern matches template variables in the format ${VAR_NAME}.
+var varPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
+
 // ExtractVariables extracts unique variable names from a template body.
 // Returns variable names in order of first appearance.
 // Skips escaped variables ($$\{VAR\}).
 func ExtractVariables(body string) []string {
 	// Match ${VAR} but not $${VAR}
 	// Negative lookbehind isn't supported in Go's RE2, so we'll filter manually
-	pattern := regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
 	// Find all matches with positions
-	matches := pattern.FindAllStringSubmatchIndex(body, -1)
+	matches := varPattern.FindAllStringSubmatchIndex(body, -1)
 	if matches == nil {
 		return []string{}
 	}
