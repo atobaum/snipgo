@@ -94,10 +94,12 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Check if running in terminal for interactive prompts
-	isTerminal := true
-	if fileInfo, _ := os.Stdin.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
-		isTerminal = false
+	// Check if /dev/tty is available for interactive prompts
+	// (works even when stdin is piped or in zle context)
+	isTerminal := false
+	if tty, err := os.Open("/dev/tty"); err == nil {
+		tty.Close()
+		isTerminal = true
 	}
 
 	// Expand body with variables

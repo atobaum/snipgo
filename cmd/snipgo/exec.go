@@ -74,8 +74,10 @@ func runExec(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Fprintf(os.Stderr, "Execute this command? [y/N]: ")
+		reader, cleanup := openTTYOrStdin()
 		var response string
-		fmt.Scanln(&response)
+		fmt.Fscanln(reader, &response)
+		cleanup()
 		if response != "y" && response != "Y" {
 			return fmt.Errorf("execution cancelled")
 		}
