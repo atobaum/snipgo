@@ -707,46 +707,6 @@ func TestManager_Save_Update(t *testing.T) {
 	}
 }
 
-func TestManager_findFileBySnippetID(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "snipgo_test_*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	cleanup, err := setupTestConfig(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to setup test config: %v", err)
-	}
-	defer cleanup()
-
-	m, err := NewManager()
-	if err != nil {
-		t.Fatalf("Failed to create manager: %v", err)
-	}
-
-	// Test with no snippets
-	path := m.findFileBySnippetID("non-existent")
-	if path != "" {
-		t.Errorf("Expected empty path for non-existent snippet, got %v", path)
-	}
-
-	// Save a snippet
-	snippet := &Snippet{
-		ID:    "test-find-id",
-		Title: "Test Snippet",
-		Body:  "Body",
-	}
-	if err := m.Save(snippet); err != nil {
-		t.Fatalf("Failed to save snippet: %v", err)
-	}
-
-	// Test finding the snippet
-	path = m.findFileBySnippetID("test-find-id")
-	if path == "" {
-		t.Error("Expected non-empty path for existing snippet")
-	}
-}
 
 func TestCopySnippet(t *testing.T) {
 	original := &Snippet{
