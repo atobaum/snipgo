@@ -3,7 +3,6 @@ package history
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
@@ -109,25 +108,6 @@ func (h *VarHistory) GetAll() map[string][]string {
 }
 
 // save persists the current state to disk. Must be called with lock held.
-// Uses atomic write: write to temp file then rename.
 func (h *VarHistory) save() error {
-	// Ensure parent directory exists
-	dir := filepath.Dir(h.path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	// Marshal to JSON
-	data, err := json.MarshalIndent(h.entries, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// Atomic write: write to temp file then rename
-	tempPath := h.path + ".tmp"
-	if err := os.WriteFile(tempPath, data, 0644); err != nil {
-		return err
-	}
-
-	return os.Rename(tempPath, h.path)
+	return atomicWriteJSON(h.path, h.entries)
 }

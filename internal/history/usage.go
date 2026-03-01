@@ -3,7 +3,6 @@ package history
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -88,20 +87,5 @@ func (t *UsageTracker) GetAll() map[string]UsageEntry {
 // save persists the current state to disk using an atomic write.
 // Must be called with the write lock held.
 func (t *UsageTracker) save() error {
-	dir := filepath.Dir(t.path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(t.entries, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	tempPath := t.path + ".tmp"
-	if err := os.WriteFile(tempPath, data, 0644); err != nil {
-		return err
-	}
-
-	return os.Rename(tempPath, t.path)
+	return atomicWriteJSON(t.path, t.entries)
 }
