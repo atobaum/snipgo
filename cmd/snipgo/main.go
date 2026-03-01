@@ -15,6 +15,7 @@ import (
 
 var manager *core.Manager
 var varHistory *history.VarHistory
+var usageTracker *history.UsageTracker
 
 var (
 	version = "dev"
@@ -56,6 +57,13 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				slog.Warn("failed to load variable history", "error", err)
 			}
+		}
+
+		// Initialize usage tracker in the snippet data directory (graceful degradation)
+		usagePath := filepath.Join(manager.GetDataDir(), "usage.json")
+		usageTracker, err = history.NewUsageTracker(usagePath)
+		if err != nil {
+			slog.Warn("failed to load usage tracker", "error", err)
 		}
 	},
 }

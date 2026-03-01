@@ -245,6 +245,11 @@ func copySnippet(s *Snippet) *Snippet {
 	return copy_
 }
 
+// GetDataDir returns the directory where snippet data files are stored.
+func (m *Manager) GetDataDir() string {
+	return m.storage.GetSnippetsDir()
+}
+
 // GetAllTags returns all unique tags across all snippets, sorted alphabetically
 func (m *Manager) GetAllTags() []string {
 	m.mu.RLock()

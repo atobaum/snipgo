@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"snipgo/internal/core"
@@ -18,7 +19,10 @@ Filters are applied first to narrow down the snippet set, then the query
 performs fuzzy matching on the filtered results.
 
 Examples:
-  # Search all snippets
+  # Search all snippets (sorted by usage frequency, most used first)
+  snipgo search
+
+  # Search with query
   snipgo search -q "docker deploy"
 
   # Filter by tag
@@ -33,8 +37,17 @@ Examples:
   # Combined filters and query
   snipgo search --tag devops --lang bash -q "deploy"
 
-  # Filters only (no query) - lists all matching snippets
-  snipgo search --tag golang`,
+  # Sort by name (alphabetical)
+  snipgo search --sort name
+
+  # Sort by name descending (reverse alphabetical)
+  snipgo search --sort name --order desc
+
+  # Sort by most recently used
+  snipgo search --sort last_used
+
+  # Sort by least frequently used
+  snipgo search --sort frequency --order asc`,
 	RunE: runSearch,
 }
 
@@ -45,6 +58,8 @@ func init() {
 	searchCmd.Flags().StringP("lang", "", "", "Alias for --language")
 	searchCmd.Flags().StringArrayP("var", "v", []string{}, "Variable value in KEY=VALUE format (repeatable)")
 	searchCmd.Flags().Bool("raw", false, "Output raw body without variable expansion")
+	searchCmd.Flags().StringP("sort", "s", "frequency", "Sort order: frequency, name, last_used")
+	searchCmd.Flags().StringP("order", "o", "", "Sort direction: asc, desc (default depends on sort field)")
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
@@ -53,17 +68,33 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	tags, _ := cmd.Flags().GetStringSlice("tag")
 	language, _ := cmd.Flags().GetString("language")
 	lang, _ := cmd.Flags().GetString("lang")
+	sortBy, _ := cmd.Flags().GetString("sort")
+	sortOrder, _ := cmd.Flags().GetString("order")
 
 	// Handle language alias
 	if language == "" && lang != "" {
 		language = lang
 	}
 
+	// Build usage data map from tracker
+	usageData := make(map[string]core.UsageData)
+	if usageTracker != nil {
+		for id, entry := range usageTracker.GetAll() {
+			usageData[id] = core.UsageData{
+				Count:    entry.Count,
+				LastUsed: entry.LastUsed,
+			}
+		}
+	}
+
 	// Build search options
 	opts := core.SearchOptions{
-		Query:    query,
-		Tags:     tags,
-		Language: language,
+		Query:     query,
+		Tags:      tags,
+		Language:  language,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+		UsageData: usageData,
 	}
 
 	// Perform search with filters
@@ -83,6 +114,13 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	selected, err := selectSnippetWithFzf(snippets)
 	if err != nil {
 		return err
+	}
+
+	// Record usage for the selected snippet
+	if usageTracker != nil {
+		if err := usageTracker.Record(selected.ID); err != nil {
+			slog.Warn("failed to record snippet usage", "id", selected.ID, "error", err)
+		}
 	}
 
 	// Parse variable flags
