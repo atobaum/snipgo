@@ -33,7 +33,7 @@ frontend/package.json.md5
 # IDE
 .idea/
 .vscode/
-.claude/settings.local.json
+.claude/*.local.*
 .claude/.cc-writes
 CLAUDE.local.md
 *.swp
