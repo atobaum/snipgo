@@ -22,11 +22,11 @@ type UsageData struct {
 
 // SearchOptions contains search query and filter criteria
 type SearchOptions struct {
-	Query     string   // Fuzzy search query (can be empty)
-	Tags      []string // Filter by tags (AND logic, case-insensitive)
-	Language  string   // Filter by language (case-insensitive, empty means no filter)
-	SortBy    string   // "frequency" (default) | "name" | "last_used"
-	SortOrder string   // "asc" | "desc" (empty = field default: frequency→desc, last_used→desc, name→asc)
+	Query     string               // Fuzzy search query (can be empty)
+	Tags      []string             // Filter by tags (AND logic, case-insensitive)
+	Language  string               // Filter by language (case-insensitive, empty means no filter)
+	SortBy    string               // "frequency" (default) | "name" | "last_used"
+	SortOrder string               // "asc" | "desc" (empty = field default: frequency→desc, last_used→desc, name→asc)
 	UsageData map[string]UsageData // snippet ID -> usage stats (provided by caller)
 }
 

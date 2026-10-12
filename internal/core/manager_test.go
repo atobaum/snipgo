@@ -709,7 +709,6 @@ func TestManager_Save_Update(t *testing.T) {
 	}
 }
 
-
 func TestCopySnippet(t *testing.T) {
 	original := &Snippet{
 		ID:         "test-id",
