@@ -1,3 +1,8 @@
+---
+paths:
+  - "frontend/**"
+---
+
 # Frontend Guidance
 
 ## Smart Save Strategy (SnippetEditor.tsx)
