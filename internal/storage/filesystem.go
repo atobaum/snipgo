@@ -40,11 +40,11 @@ func (fs *FileSystem) GetSnippetsDir() string {
 func (fs *FileSystem) ListFiles() ([]string, error) {
 	var files []string
 
-	err := filepath.Walk(fs.snippetsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(fs.snippetsDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(strings.ToLower(path), ".md") {
+		if !d.IsDir() && strings.HasSuffix(strings.ToLower(path), ".md") {
 			files = append(files, path)
 		}
 		return nil
