@@ -1,8 +1,10 @@
 package core
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -771,5 +773,39 @@ func TestCopySnippet(t *testing.T) {
 	// Verify pointers are different
 	if copied == original {
 		t.Error("copySnippet() returned same pointer")
+	}
+}
+
+func TestManager_ErrSnippetNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	defer cleanup()
+
+	manager, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "GetByID", call: func() error { _, err := manager.GetByID("missing-id"); return err }},
+		{name: "Delete", call: func() error { return manager.Delete("missing-id") }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.call()
+			if !errors.Is(err, ErrSnippetNotFound) {
+				t.Fatalf("expected ErrSnippetNotFound, got %v", err)
+			}
+			if !strings.Contains(err.Error(), "missing-id") {
+				t.Errorf("expected error to include snippet ID, got %q", err.Error())
+			}
+		})
 	}
 }
