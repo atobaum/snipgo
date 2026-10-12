@@ -171,18 +171,7 @@ func (a *App) ExtractVariables(snippetID string) ([]*tmpl.Variable, error) {
 		return []*tmpl.Variable{}, nil
 	}
 
-	// Merge with frontmatter (D10: body is source of truth)
-	var result []*tmpl.Variable
-	for _, name := range bodyVarNames {
-		if fv, ok := snippet.Variables[name]; ok {
-			v := *fv
-			v.Name = name
-			result = append(result, &v)
-		} else {
-			result = append(result, &tmpl.Variable{Name: name})
-		}
-	}
-	return result, nil
+	return tmpl.MergeWithMetadata(bodyVarNames, snippet.Variables), nil
 }
 
 // ExpandSnippet expands a snippet's body with the given variable values.

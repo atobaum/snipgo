@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -11,6 +12,9 @@ import (
 	"snipgo/internal/storage"
 	"snipgo/internal/tmpl"
 )
+
+// ErrSnippetNotFound is returned when no snippet exists for the given ID.
+var ErrSnippetNotFound = errors.New("snippet not found")
 
 // filenameUnsafe matches characters not allowed in snippet filenames.
 // Each character is replaced individually (no + quantifier) to preserve
@@ -124,7 +128,7 @@ func (m *Manager) Delete(id string) error {
 	defer m.mu.Unlock()
 
 	if _, exists := m.snippets[id]; !exists {
-		return fmt.Errorf("snippet with ID %s not found", id)
+		return fmt.Errorf("%w: %s", ErrSnippetNotFound, id)
 	}
 
 	// Delete the file using the cached path
@@ -148,7 +152,7 @@ func (m *Manager) GetByID(id string) (*Snippet, error) {
 
 	snippet, exists := m.snippets[id]
 	if !exists {
-		return nil, fmt.Errorf("snippet with ID %s not found", id)
+		return nil, fmt.Errorf("%w: %s", ErrSnippetNotFound, id)
 	}
 
 	// Return a copy to prevent external modifications

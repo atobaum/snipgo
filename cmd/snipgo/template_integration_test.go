@@ -106,7 +106,7 @@ func TestExpandSnippetBody_WithMissingValues_NonInteractive(t *testing.T) {
 	}
 }
 
-func TestMergeVariables_ExcludesFrontmatterOnlyVars(t *testing.T) {
+func TestMergeWithMetadata_ExcludesFrontmatterOnlyVars(t *testing.T) {
 	bodyVarNames := []string{"A", "B"}
 	frontmatterVars := map[string]*tmpl.Variable{
 		"A": {Name: "A", Default: "alpha"},
@@ -114,7 +114,7 @@ func TestMergeVariables_ExcludesFrontmatterOnlyVars(t *testing.T) {
 		"C": {Name: "C", Default: "gamma"}, // Frontmatter-only, should be excluded
 	}
 
-	result := mergeVariables(bodyVarNames, frontmatterVars)
+	result := tmpl.MergeWithMetadata(bodyVarNames, frontmatterVars)
 
 	// Should only include A and B
 	if len(result) != 2 {

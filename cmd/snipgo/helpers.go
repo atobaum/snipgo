@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"snipgo/internal/core"
@@ -125,19 +126,9 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 		return nil, fmt.Errorf("fzf is not installed. Please install fzf first: https://github.com/junegunn/fzf")
 	}
 
-	// Build fzf input: format each snippet
-	var fzfInput strings.Builder
-	snippetMap := make(map[string]*core.Snippet) // Map from formatted line to snippet
-	for _, snippet := range snippets {
-		formatted := formatSnippetForFzf(snippet)
-		fzfInput.WriteString(formatted)
-		fzfInput.WriteString("\n")
-		snippetMap[formatted] = snippet
-	}
-
 	// Run fzf
-	cmd := exec.Command("fzf", "--ansi", "--height", "40%")
-	cmd.Stdin = strings.NewReader(fzfInput.String())
+	cmd := exec.Command("fzf", "--ansi", "--height", "40%", "--delimiter", "\t", "--with-nth", "2..")
+	cmd.Stdin = strings.NewReader(buildFzfInput(snippets))
 	cmd.Stderr = os.Stderr
 
 	output, err := cmd.Output()
@@ -155,25 +146,28 @@ func selectSnippetWithFzf(snippets []*core.Snippet) (*core.Snippet, error) {
 		return nil, fmt.Errorf("no snippet selected")
 	}
 
-	// Find snippet by matching the selected line
-	selectedSnippet, found := snippetMap[selectedLine]
+	return snippetFromFzfSelection(selectedLine, snippets)
+}
+
+// buildFzfInput prefixes each line with its snippet index so the selection maps back
+// unambiguously even when display lines collide.
+func buildFzfInput(snippets []*core.Snippet) string {
+	var b strings.Builder
+	for i, snippet := range snippets {
+		fmt.Fprintf(&b, "%d\t%s\n", i, formatSnippetForFzf(snippet))
+	}
+	return b.String()
+}
+
+// snippetFromFzfSelection resolves a line produced by buildFzfInput back to its snippet.
+func snippetFromFzfSelection(line string, snippets []*core.Snippet) (*core.Snippet, error) {
+	indexStr, _, found := strings.Cut(line, "\t")
 	if !found {
-		// If exact match not found, try to extract title from the line
-		// Format: [Title] Body #tags
-		if strings.HasPrefix(selectedLine, "[") {
-			endIdx := strings.Index(selectedLine, "]")
-			if endIdx > 0 {
-				title := selectedLine[1:endIdx]
-				// Find snippet by title
-				for _, snippet := range snippets {
-					if snippet.Title == title {
-						return snippet, nil
-					}
-				}
-			}
-		}
 		return nil, fmt.Errorf("could not find selected snippet")
 	}
-
-	return selectedSnippet, nil
+	index, err := strconv.Atoi(indexStr)
+	if err != nil || index < 0 || index >= len(snippets) {
+		return nil, fmt.Errorf("could not find selected snippet")
+	}
+	return snippets[index], nil
 }
