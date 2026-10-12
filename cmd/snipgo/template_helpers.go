@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -45,6 +46,16 @@ func mergeVariables(bodyVarNames []string, frontmatterVars map[string]*tmpl.Vari
 	return result
 }
 
+// openTTYOrStdin returns a reader for user input.
+// Tries /dev/tty first (works in piped/zle contexts), falls back to os.Stdin.
+func openTTYOrStdin() (io.Reader, func()) {
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return os.Stdin, func() {}
+	}
+	return tty, func() { tty.Close() }
+}
+
 // promptForVariables interactively prompts the user for missing variable values.
 // Uses the choice display format from D11.
 // Priority: CLI -v flag > frontmatter default > history last-used > empty
@@ -55,7 +66,9 @@ func promptForVariables(vars []*tmpl.Variable, provided map[string]string, hist 
 		values[k] = v
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
+	reader, cleanup := openTTYOrStdin()
+	defer cleanup()
+	scanner := bufio.NewScanner(reader)
 
 	for _, v := range vars {
 		if _, ok := values[v.Name]; ok {
