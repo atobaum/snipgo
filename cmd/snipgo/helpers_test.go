@@ -3,7 +3,10 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"snipgo/internal/core"
 )
 
 func TestEditContentInEditor_Modified(t *testing.T) {
@@ -96,4 +99,46 @@ func TestEditContentInEditor_DefaultEditor(t *testing.T) {
 	// Skip this test in CI/automated environments because vi hangs waiting for input
 	// This test verifies default editor behavior which requires a real terminal
 	t.Skip("Skipping default editor test - requires interactive terminal")
+}
+
+func TestFzfSelection_DuplicateDisplayLines(t *testing.T) {
+	snippets := []*core.Snippet{
+		{ID: "first", Title: "deploy", Body: "make deploy"},
+		{ID: "second", Title: "deploy", Body: "make deploy"},
+	}
+
+	lines := strings.Split(strings.TrimSuffix(buildFzfInput(snippets), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 fzf lines, got %d", len(lines))
+	}
+
+	got, err := snippetFromFzfSelection(lines[1], snippets)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ID != "second" {
+		t.Errorf("selected ID = %q, want %q", got.ID, "second")
+	}
+}
+
+func TestSnippetFromFzfSelection_Invalid(t *testing.T) {
+	snippets := []*core.Snippet{{ID: "only", Title: "t"}}
+
+	tests := []struct {
+		name string
+		line string
+	}{
+		{name: "no index prefix", line: "[t] body"},
+		{name: "non-numeric index", line: "x\t[t] body"},
+		{name: "index out of range", line: "1\t[t] body"},
+		{name: "negative index", line: "-1\t[t] body"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := snippetFromFzfSelection(tt.line, snippets); err == nil {
+				t.Errorf("expected error for line %q", tt.line)
+			}
+		})
+	}
 }
