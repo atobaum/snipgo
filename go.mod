@@ -1,6 +1,6 @@
 module snipgo
 
-go 1.25.5
+go 1.27
 
 require (
 	github.com/atotto/clipboard v0.1.4
