@@ -28,24 +28,6 @@ func parseVarFlags(flags []string) (map[string]string, error) {
 	return result, nil
 }
 
-// mergeVariables merges body-detected variables with frontmatter metadata (D10).
-// Returns variables in body occurrence order. Frontmatter-only variables are excluded.
-func mergeVariables(bodyVarNames []string, frontmatterVars map[string]*tmpl.Variable) []*tmpl.Variable {
-	var result []*tmpl.Variable
-	for _, name := range bodyVarNames {
-		if fv, ok := frontmatterVars[name]; ok {
-			// Enrich with frontmatter metadata
-			v := *fv
-			v.Name = name
-			result = append(result, &v)
-		} else {
-			// Body-only variable, no metadata
-			result = append(result, &tmpl.Variable{Name: name})
-		}
-	}
-	return result
-}
-
 // openTTYOrStdin returns a reader for user input.
 // Tries /dev/tty first (works in piped/zle contexts), falls back to os.Stdin.
 func openTTYOrStdin() (io.Reader, func()) {
@@ -169,7 +151,7 @@ func expandSnippetBody(snippet *core.Snippet, providedVars map[string]string, ra
 	}
 
 	// Merge with frontmatter metadata
-	vars := mergeVariables(bodyVarNames, snippet.Variables)
+	vars := tmpl.MergeWithMetadata(bodyVarNames, snippet.Variables)
 
 	// Collect values
 	values := make(map[string]string)
