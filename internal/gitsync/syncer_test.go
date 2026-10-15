@@ -100,6 +100,8 @@ func TestSync_Preconditions(t *testing.T) {
 		{name: "git missing", noGit: true, wantErr: ErrGitNotFound},
 		{name: "not a repository", setup: func(f *fakeRunner) { f.set("rev-parse --show-toplevel", failing) }, wantErr: ErrNotRepository},
 		{name: "merge in progress", setup: func(f *fakeRunner) { f.set("rev-parse -q --verify MERGE_HEAD", fakeResp{stdout: "abc\n"}) }, wantErr: ErrMergeInProgress},
+		{name: "unborn branch", setup: func(f *fakeRunner) { f.set("rev-parse -q --verify HEAD", fakeResp{err: errors.New("exit status 1")}) }, wantErr: ErrUnbornBranch},
+		{name: "detached head", setup: func(f *fakeRunner) { f.set("symbolic-ref -q HEAD", fakeResp{err: errors.New("exit status 1")}) }, wantErr: ErrDetachedHead},
 		{name: "no upstream", setup: func(f *fakeRunner) { f.set("rev-parse --abbrev-ref --symbolic-full-name @{u}", failing) }, wantErr: ErrNoUpstream},
 		{name: "index lock on add", setup: func(f *fakeRunner) {
 			f.set(addKey, fakeResp{err: errors.New("exit status 128"), stderr: "fatal: Unable to create '/r/.git/index.lock': File exists."})
@@ -121,6 +123,9 @@ func TestSync_Preconditions(t *testing.T) {
 			}
 			if f.called("pull --no-rebase --no-edit") {
 				t.Error("pull must not run when a precondition fails")
+			}
+			if tt.wantErr != ErrLocked && f.called(addKey) {
+				t.Error("add must not run when a precondition fails")
 			}
 		})
 	}

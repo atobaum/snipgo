@@ -261,6 +261,12 @@ func TestSync_RepositoryErrors(t *testing.T) {
 		t.Errorf("plain dir error = %v, want ErrNotRepository", err)
 	}
 
+	unborn := t.TempDir()
+	gitCmd(t, unborn, "init", "-b", "main")
+	if _, err := syncDir(t, unborn, ModeManual); !errors.Is(err, ErrUnbornBranch) {
+		t.Errorf("unborn branch error = %v, want ErrUnbornBranch", err)
+	}
+
 	local := t.TempDir()
 	gitCmd(t, local, "init", "-b", "main")
 	gitCmd(t, local, "config", "user.name", "L")
@@ -270,6 +276,11 @@ func TestSync_RepositoryErrors(t *testing.T) {
 	gitCmd(t, local, "commit", "-m", "init")
 	if _, err := syncDir(t, local, ModeManual); !errors.Is(err, ErrNoUpstream) {
 		t.Errorf("no remote error = %v, want ErrNoUpstream", err)
+	}
+
+	gitCmd(t, local, "checkout", "-q", "--detach")
+	if _, err := syncDir(t, local, ModeManual); !errors.Is(err, ErrDetachedHead) {
+		t.Errorf("detached HEAD error = %v, want ErrDetachedHead", err)
 	}
 }
 

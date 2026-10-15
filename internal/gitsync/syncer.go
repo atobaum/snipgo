@@ -69,6 +69,14 @@ func (s *Syncer) git(ctx context.Context, op string, args ...string) (string, er
 	return stdout, &GitError{Op: op, Stderr: stderr, Err: err}
 }
 
+func (s *Syncer) precondition(ctx context.Context, kind error, args ...string) error {
+	_, stderr, err := s.runner.Run(ctx, s.opts.Dir, args...)
+	if err == nil {
+		return nil
+	}
+	return &GitError{Op: "status", Stderr: stderr, Err: kind}
+}
+
 // Sync runs one commit, pull, push cycle. A canceled or expired context is returned as is.
 func (s *Syncer) Sync(ctx context.Context) (Result, error) {
 	res, err := s.sync(ctx)
@@ -83,14 +91,20 @@ func (s *Syncer) sync(ctx context.Context) (Result, error) {
 	if _, err := s.opts.LookPath("git"); err != nil {
 		return res, ErrGitNotFound
 	}
-	if _, err := s.git(ctx, "status", "rev-parse", "--show-toplevel"); err != nil {
-		return res, ErrNotRepository
+	if err := s.precondition(ctx, ErrNotRepository, "rev-parse", "--show-toplevel"); err != nil {
+		return res, err
 	}
 	if _, err := s.git(ctx, "status", "rev-parse", "-q", "--verify", "MERGE_HEAD"); err == nil {
 		return res, ErrMergeInProgress
 	}
-	if _, err := s.git(ctx, "status", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"); err != nil {
-		return res, ErrNoUpstream
+	if err := s.precondition(ctx, ErrUnbornBranch, "rev-parse", "-q", "--verify", "HEAD"); err != nil {
+		return res, err
+	}
+	if err := s.precondition(ctx, ErrDetachedHead, "symbolic-ref", "-q", "HEAD"); err != nil {
+		return res, err
+	}
+	if err := s.precondition(ctx, ErrNoUpstream, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"); err != nil {
+		return res, err
 	}
 
 	committed, err := s.commitSnippets(ctx)

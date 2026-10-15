@@ -9,6 +9,8 @@ import (
 var (
 	ErrGitNotFound     = errors.New("git executable not found")
 	ErrNotRepository   = errors.New("snippet directory is not inside a git repository")
+	ErrUnbornBranch    = errors.New("current branch has no commits yet")
+	ErrDetachedHead    = errors.New("HEAD is detached")
 	ErrNoUpstream      = errors.New("current branch has no upstream")
 	ErrMergeInProgress = errors.New("a merge is in progress")
 	ErrLocked          = errors.New("another git process is running in this repository")

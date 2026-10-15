@@ -56,9 +56,13 @@ func Describe(err error) (kind, message string) {
 	case errors.Is(err, ErrGitNotFound):
 		return "git_not_found", "git is not installed or not in PATH."
 	case errors.Is(err, ErrNotRepository):
-		return "not_repository", "The snippet directory is not in a git repository. Run git init and add a remote first."
+		return "not_repository", withStderr("The snippet directory is not in a git repository. Run git init and add a remote first.", err)
+	case errors.Is(err, ErrUnbornBranch):
+		return "unborn_branch", "The current branch has no commits yet. Run git commit to make an initial commit first, then push it with git push -u origin HEAD."
+	case errors.Is(err, ErrDetachedHead):
+		return "detached_head", "HEAD is detached, so there is no branch to sync. Check out a branch with git switch <branch>, then sync again."
 	case errors.Is(err, ErrNoUpstream):
-		return "no_upstream", "The current branch has no upstream. Run: git push -u origin <branch>"
+		return "no_upstream", withStderr("The current branch has no upstream. Run: git push -u origin HEAD", err)
 	case errors.Is(err, ErrMergeInProgress):
 		return "merge_in_progress", "A git merge is in progress in the snippet repository. Resolve it with git, then sync again."
 	case errors.Is(err, ErrLocked):
@@ -74,6 +78,16 @@ func Describe(err error) (kind, message string) {
 	default:
 		return "git", err.Error()
 	}
+}
+
+func withStderr(message string, err error) string {
+	var ge *GitError
+	if errors.As(err, &ge) {
+		if stderr := strings.TrimSpace(ge.Stderr); stderr != "" {
+			return message + " (" + stderr + ")"
+		}
+	}
+	return message
 }
 
 func Summary(r Result) string {

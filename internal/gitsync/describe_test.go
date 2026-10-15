@@ -17,7 +17,11 @@ func TestDescribe(t *testing.T) {
 	}{
 		{"git missing", ErrGitNotFound, "git_not_found", "git is not installed"},
 		{"not repo", ErrNotRepository, "not_repository", "git init"},
-		{"no upstream", ErrNoUpstream, "no_upstream", "git push -u"},
+		{"no upstream", ErrNoUpstream, "no_upstream", "git push -u origin HEAD"},
+		{"not repo keeps stderr", &GitError{Op: "status", Stderr: "fatal: not a git repository (or any of the parent directories): .git\n", Err: ErrNotRepository}, "not_repository", "fatal: not a git repository"},
+		{"no upstream keeps stderr", &GitError{Op: "status", Stderr: "fatal: no upstream configured for branch 'main'\n", Err: ErrNoUpstream}, "no_upstream", "no upstream configured for branch 'main'"},
+		{"unborn branch", &GitError{Op: "status", Stderr: "fatal: Needed a single revision", Err: ErrUnbornBranch}, "unborn_branch", "make an initial commit first"},
+		{"detached head", &GitError{Op: "status", Err: ErrDetachedHead}, "detached_head", "git switch"},
 		{"merge in progress", ErrMergeInProgress, "merge_in_progress", "merge is in progress"},
 		{"locked", ErrLocked, "locked", "another git process"},
 		{"conflict", &ConflictError{Files: []string{"a.md", "b.md"}}, "conflict", "a.md, b.md"},
