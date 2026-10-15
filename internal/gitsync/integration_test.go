@@ -305,3 +305,71 @@ func TestSync_NonASCIIConflictFileName(t *testing.T) {
 		t.Errorf("unmerged entries remain: %q", status)
 	}
 }
+
+func TestSync_StagesOnlySnippetFiles(t *testing.T) {
+	tests := []struct {
+		name   string
+		subdir string
+	}{
+		{name: "repo root", subdir: ""},
+		{name: "inside hidden parent", subdir: filepath.Join(".config", "snipgo", "snippets")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requireGit(t)
+			a, _ := newRemoteWithClones(t)
+			dir := filepath.Join(a, tt.subdir)
+			writeFile(t, filepath.Join(dir, "a.md"), "a\n")
+			writeFile(t, filepath.Join(dir, "sub", "b.md"), "b\n")
+			writeFile(t, filepath.Join(dir, "C.MD"), "c\n")
+			writeFile(t, filepath.Join(dir, ".DS_Store"), "junk")
+			writeFile(t, filepath.Join(dir, "a.md.swp"), "swap")
+			writeFile(t, filepath.Join(dir, ".obsidian", "workspace.json"), "{}")
+			writeFile(t, filepath.Join(dir, ".obsidian", "hidden.md"), "h\n")
+			nested := filepath.Join(dir, "nested")
+			writeFile(t, filepath.Join(nested, "n.md"), "n\n")
+			gitCmd(t, nested, "init", "-q")
+
+			res, err := syncDir(t, dir, ModeManual)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !res.Committed || !res.Pushed {
+				t.Fatalf("result = %+v, want committed and pushed", res)
+			}
+			got := strings.Fields(gitCmd(t, a, "show", "--name-only", "--format=", "HEAD"))
+			rel := func(p string) string { return filepath.ToSlash(filepath.Join(tt.subdir, p)) }
+			want := []string{rel("C.MD"), rel("a.md"), rel("sub/b.md")}
+			if strings.Join(got, ",") != strings.Join(want, ",") {
+				t.Errorf("committed files = %v, want %v", got, want)
+			}
+
+			if err := os.Remove(filepath.Join(dir, "a.md")); err != nil {
+				t.Fatal(err)
+			}
+			res, err = syncDir(t, dir, ModeManual)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !res.Committed || !res.Pushed {
+				t.Fatalf("deletion result = %+v, want committed and pushed", res)
+			}
+			remoteFiles := gitCmd(t, a, "ls-tree", "-r", "--name-only", "origin/main")
+			if strings.Contains(remoteFiles, rel("a.md")) || !strings.Contains(remoteFiles, rel("sub/b.md")) {
+				t.Errorf("remote files = %q, want a.md deleted and sub/b.md kept", remoteFiles)
+			}
+		})
+	}
+}
+
+func TestSync_NoSnippetFiles(t *testing.T) {
+	requireGit(t)
+	a, _ := newRemoteWithClones(t)
+	dir := filepath.Join(a, "empty")
+	writeFile(t, filepath.Join(dir, ".DS_Store"), "junk")
+
+	res, err := syncDir(t, dir, ModeManual)
+	if err != nil || res != (Result{}) {
+		t.Errorf("sync = %+v, %v, want up to date", res, err)
+	}
+}

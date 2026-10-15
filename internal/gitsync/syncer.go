@@ -12,6 +12,9 @@ import (
 
 const cleanupTimeout = 10 * time.Second
 
+// Matches what storage.ListFiles loads: *.md files outside hidden directories.
+var snippetPathspecs = []string{"*.[mM][dD]", ":(exclude,glob)**/.*/**", ":(exclude,glob).*/**"}
+
 type Mode string
 
 const (
@@ -90,19 +93,11 @@ func (s *Syncer) sync(ctx context.Context) (Result, error) {
 		return res, ErrNoUpstream
 	}
 
-	if _, err := s.git(ctx, "add", "add", "-A", "--", "."); err != nil {
-		return res, err
-	}
-	staged, err := s.git(ctx, "status", "diff", "--cached", "--name-only", "--", ".")
+	committed, err := s.commitSnippets(ctx)
 	if err != nil {
 		return res, err
 	}
-	if strings.TrimSpace(staged) != "" {
-		if _, err := s.git(ctx, "commit", "commit", "-m", s.commitMessage(), "--", "."); err != nil {
-			return res, err
-		}
-		res.Committed = true
-	}
+	res.Committed = committed
 
 	before, err := s.git(ctx, "status", "rev-parse", "HEAD")
 	if err != nil {
@@ -128,6 +123,25 @@ func (s *Syncer) sync(ctx context.Context) (Result, error) {
 		res.Pushed = true
 	}
 	return res, nil
+}
+
+func (s *Syncer) commitSnippets(ctx context.Context) (bool, error) {
+	// git add fails when a wildcard pathspec matches nothing.
+	snippets, err := s.git(ctx, "status", append([]string{"ls-files", "--cached", "--others", "--exclude-standard", "--"}, snippetPathspecs...)...)
+	if err != nil || strings.TrimSpace(snippets) == "" {
+		return false, err
+	}
+	if _, err := s.git(ctx, "add", append([]string{"add", "-A", "--"}, snippetPathspecs...)...); err != nil {
+		return false, err
+	}
+	staged, err := s.git(ctx, "status", append([]string{"diff", "--cached", "--name-only", "--"}, snippetPathspecs...)...)
+	if err != nil || strings.TrimSpace(staged) == "" {
+		return false, err
+	}
+	if _, err := s.git(ctx, "commit", append([]string{"commit", "-m", s.commitMessage(), "--"}, snippetPathspecs...)...); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // -X cannot resolve modify/delete conflicts, so conflicts are aborted in every mode.

@@ -26,6 +26,7 @@ func newFakeRunner() *fakeRunner {
 		"rev-parse -q --verify MERGE_HEAD": {{err: errors.New("exit status 1")}},
 		"rev-parse HEAD":                   {{stdout: "aaa\n"}},
 		"rev-list --count @{u}..HEAD":      {{stdout: "0\n"}},
+		lsFilesKey:                         {{stdout: "a.md\n"}},
 	}}
 }
 
@@ -79,7 +80,14 @@ var (
 	mergeInProgress = fakeResp{stdout: "abc\n"}
 )
 
-const commitKey = "commit -m snipgo sync: 2026-10-15 21:50 (host) -- ."
+const specs = "*.[mM][dD] :(exclude,glob)**/.*/** :(exclude,glob).*/**"
+
+const (
+	lsFilesKey = "ls-files --cached --others --exclude-standard -- " + specs
+	addKey     = "add -A -- " + specs
+	stagedKey  = "diff --cached --name-only -- " + specs
+	commitKey  = "commit -m snipgo sync: 2026-10-15 21:50 (host) -- " + specs
+)
 
 func TestSync_Preconditions(t *testing.T) {
 	failing := fakeResp{err: errors.New("exit status 128"), stderr: "fatal"}
@@ -94,7 +102,7 @@ func TestSync_Preconditions(t *testing.T) {
 		{name: "merge in progress", setup: func(f *fakeRunner) { f.set("rev-parse -q --verify MERGE_HEAD", fakeResp{stdout: "abc\n"}) }, wantErr: ErrMergeInProgress},
 		{name: "no upstream", setup: func(f *fakeRunner) { f.set("rev-parse --abbrev-ref --symbolic-full-name @{u}", failing) }, wantErr: ErrNoUpstream},
 		{name: "index lock on add", setup: func(f *fakeRunner) {
-			f.set("add -A -- .", fakeResp{err: errors.New("exit status 128"), stderr: "fatal: Unable to create '/r/.git/index.lock': File exists."})
+			f.set(addKey, fakeResp{err: errors.New("exit status 128"), stderr: "fatal: Unable to create '/r/.git/index.lock': File exists."})
 		}, wantErr: ErrLocked},
 	}
 	for _, tt := range tests {
@@ -121,19 +129,26 @@ func TestSync_Preconditions(t *testing.T) {
 func TestSync_CommitOnlyWhenStaged(t *testing.T) {
 	tests := []struct {
 		name       string
+		snippets   string
 		staged     string
+		wantAdd    bool
 		wantCommit bool
 	}{
-		{name: "nothing staged", staged: "", wantCommit: false},
-		{name: "staged changes", staged: "a.md\n", wantCommit: true},
+		{name: "no snippet files", snippets: "", staged: "", wantAdd: false, wantCommit: false},
+		{name: "nothing staged", snippets: "a.md\n", staged: "", wantAdd: true, wantCommit: false},
+		{name: "staged changes", snippets: "a.md\n", staged: "a.md\n", wantAdd: true, wantCommit: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFakeRunner()
-			f.set("diff --cached --name-only -- .", fakeResp{stdout: tt.staged})
+			f.set(lsFilesKey, fakeResp{stdout: tt.snippets})
+			f.set(stagedKey, fakeResp{stdout: tt.staged})
 			res, err := newTestSyncer(f, ModeManual).Sync(context.Background())
 			if err != nil {
 				t.Fatal(err)
+			}
+			if f.called(addKey) != tt.wantAdd {
+				t.Errorf("add called = %v, want %v (calls %v)", f.called(addKey), tt.wantAdd, f.calls)
 			}
 			if res.Committed != tt.wantCommit || f.called(commitKey) != tt.wantCommit {
 				t.Errorf("Committed = %v, commit called = %v, want %v (calls %v)", res.Committed, f.called(commitKey), tt.wantCommit, f.calls)
@@ -273,7 +288,7 @@ func TestSync_Push(t *testing.T) {
 
 func TestSync_CommitFailureIsGitError(t *testing.T) {
 	f := newFakeRunner()
-	f.set("diff --cached --name-only -- .", fakeResp{stdout: "a.md\n"})
+	f.set(stagedKey, fakeResp{stdout: "a.md\n"})
 	f.set(commitKey, fakeResp{err: errors.New("exit status 128"), stderr: "Please tell me who you are."})
 	_, err := newTestSyncer(f, ModeManual).Sync(context.Background())
 	var ge *GitError
