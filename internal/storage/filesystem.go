@@ -82,6 +82,27 @@ func (fs *FileSystem) DeleteFile(filepath string) error {
 	return nil
 }
 
+// RenameFile renames a file
+func (fs *FileSystem) RenameFile(oldPath, newPath string) error {
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("failed to rename file %s to %s: %w", oldPath, newPath, err)
+	}
+	return nil
+}
+
+// SameFile reports whether both paths refer to the same existing file
+func (fs *FileSystem) SameFile(a, b string) bool {
+	infoA, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	infoB, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(infoA, infoB)
+}
+
 // FileExists checks if a file exists
 func (fs *FileSystem) FileExists(filepath string) bool {
 	_, err := os.Stat(filepath)

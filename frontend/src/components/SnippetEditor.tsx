@@ -37,7 +37,7 @@ export function SnippetEditor({
   const [pendingVariables, setPendingVariables] = useState<Variable[]>([]);
 
   // Auto-save with debouncing
-  const { saveStatus } = useSnippetAutoSave({
+  const { saveStatus, flushSave } = useSnippetAutoSave({
     snippet,
     title: form.title,
     description: form.description,
@@ -49,6 +49,17 @@ export function SnippetEditor({
     isLoadingRef: form.isLoadingRef,
     onSave,
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        flushSave();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [flushSave]);
 
   // Notify parent of dirty state changes
   useEffect(() => {
@@ -69,7 +80,7 @@ export function SnippetEditor({
         await app.ReloadSnippets();
         onListRefresh?.();
       } catch (err) {
-        alert(
+        app.AlertDialog("SnipGo",
           "Failed to save: " +
             (err instanceof Error ? err.message : "Unknown error")
         );
@@ -104,14 +115,18 @@ export function SnippetEditor({
 
   const handleDelete = useCallback(async () => {
     if (!snippet) return;
-    if (!confirm("Are you sure you want to delete this snippet?")) return;
-
     try {
+      const confirmed = await app.ConfirmDialog(
+        "Delete Snippet",
+        "Are you sure you want to delete this snippet?"
+      );
+      if (!confirmed) return;
+
       await app.DeleteSnippet(snippet.id);
       await app.ReloadSnippets();
       onDelete();
     } catch (err) {
-      alert(
+      app.AlertDialog("SnipGo",
         "Failed to delete snippet: " +
           (err instanceof Error ? err.message : "Unknown error")
       );
@@ -134,7 +149,7 @@ updated_at: "${snippet.updated_at}"
 ${form.body}`;
       setRawContent(frontmatter);
     } else {
-      alert(
+      app.AlertDialog("SnipGo",
         "Raw mode editing is read-only in this version. Please use the form fields."
       );
     }
@@ -164,9 +179,9 @@ ${form.body}`;
         setShowVariableModal(false);
         setPendingVariables([]);
 
-        alert("Copied expanded snippet to clipboard!");
+        app.AlertDialog("SnipGo", "Copied expanded snippet to clipboard!");
       } catch (err) {
-        alert(
+        app.AlertDialog("SnipGo",
           "Failed to copy expanded snippet: " +
             (err instanceof Error ? err.message : "Unknown error")
         );

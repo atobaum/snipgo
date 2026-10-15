@@ -36,10 +36,10 @@ export function ActionButtons({
       } else {
         // No variables - copy raw body
         await app.CopyToClipboard(body);
-        alert("Copied to clipboard!");
+        app.AlertDialog("SnipGo", "Copied to clipboard!");
       }
     } catch (err) {
-      alert(
+      app.AlertDialog("SnipGo",
         "Failed to copy to clipboard: " +
           (err instanceof Error ? err.message : "Unknown error")
       );
