@@ -246,6 +246,56 @@ Variable history is saved automatically — previously used values appear as def
 
 When a snippet contains variables, the **Copy Expanded** button appears. Clicking it opens a modal where you can fill in each variable value before copying to clipboard. The regular **Copy** button always copies the raw template.
 
+### Git Sync
+
+SnipGo can keep the snippet directory in sync with a git remote. A sync run commits local changes (snippet directory only), pulls from the upstream branch with `git pull --no-rebase`, and pushes if there is anything to push.
+
+**Repository setup (once):**
+
+```bash
+cd ~/.config/snipgo/snippets   # your data directory
+git init
+git remote add origin <url>
+git add -A && git commit -m "Initial snippets"
+git push -u origin main
+```
+
+You can also put the snippet directory inside an existing repository. The current branch must have an upstream.
+
+**Manual sync:**
+
+```bash
+snipgo sync
+```
+
+Exits with code 1 and prints the reason when the sync fails.
+
+**Settings:**
+
+```bash
+snipgo config set sync.enabled true         # automatic sync in the GUI (default: false)
+snipgo config set sync.interval_minutes 10  # default: 10, minimum 1
+snipgo config set sync.conflict manual      # manual (default), local, or remote
+```
+
+```yaml
+sync:
+  enabled: true
+  interval_minutes: 10
+  conflict: manual
+```
+
+**Conflict modes:**
+- `manual`: the merge is aborted, the conflicting files are listed, and automatic sync pauses until a manual sync succeeds. Resolve the conflict with git (pull, fix, commit), then sync again.
+- `local`: content conflicts are resolved in favor of this machine (`-X ours`).
+- `remote`: content conflicts are resolved in favor of the remote (`-X theirs`).
+
+Conflicts that git cannot resolve this way, such as a file modified on one side and deleted on the other, always stop like `manual`.
+
+**GUI:** when `sync.enabled` is true, the app syncs at startup and then every interval. Manual sync works regardless of `enabled`. Settings → Git Sync has the enabled toggle, interval, conflict mode, a "Sync now" button, the last run, and a notice when automatic sync is paused. Results appear as toasts. A manual sync always reports its result. Automatic runs report only errors, and the same error is shown once until a sync succeeds.
+
+**Credentials:** SnipGo uses your own git setup (ssh keys or a credential helper). Git runs with `GIT_TERMINAL_PROMPT=0`, so HTTPS password prompts are disabled and a missing credential fails instead of hanging. Each run times out after 2 minutes.
+
 ## Data Format
 
 Snippets are stored as Markdown files with YAML frontmatter:
@@ -303,6 +353,7 @@ snipgo/
 **Completed Features:**
 - ✅ **Dynamic Templates**: `${VARIABLE_NAME}` placeholders with interactive prompts, defaults, choices, and variable history
 - ✅ **`new` Command Flags**: `-t`, `--tags`, `-L`, `-c` and piped stdin to save a snippet in one line
+- ✅ **Git Sync**: `snipgo sync` and optional automatic sync in the GUI with a git remote (commit, pull, push) and configurable conflict handling
 
 **Planned Features:**
 - ⏳ **Hot Reload**: fsnotify-based file watcher for real-time GUI updates when files are modified externally (CLI → GUI sync)
@@ -316,7 +367,6 @@ snipgo/
 - 📋 **Export**: Code snippet image capture (Carbon-style)
 - 📋 **Interactive TUI**: Enhanced CLI with bubbletea for interactive search/select (alternative to fzf)
 - 📋 **Theme**: Light/Dark mode and editor theme customization
-- 📋 **Cloud Sync**: Optional synchronization with GitHub Gist or Git repositories (maintaining local-first principle)
 
 ## Related Projects
 
