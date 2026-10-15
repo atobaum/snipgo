@@ -10,8 +10,9 @@
 
 ## Engine (Tasks 2 and 3)
 - New package `internal/gitsync` with no Wails dependency. `Runner` interface with `ExecRunner`, which sets `GIT_TERMINAL_PROMPT=0` and `cmd.WaitDelay` so a child holding the pipes cannot outlive the deadline.
-- `Syncer.Sync` checks git is installed, the directory is in a repository, no merge is in progress, and the branch has an upstream. Each failure has a typed error (`ErrGitNotFound`, `ErrNotRepository`, `ErrMergeInProgress`, `ErrNoUpstream`, `ErrLocked`, `GitError`, `ConflictError`).
-- On a failed pull, unmerged files are listed (`core.quotePath=false`, scoped to the snippet directory) and `merge --abort` runs on a fresh 10s context, so a timeout or cancel mid-pull never leaves a merge in progress. Every mode aborts, because `-X` cannot resolve modify/delete conflicts.
+- `Syncer.Sync` checks git is installed, the directory is in a repository, no merge is in progress, the branch has a commit, HEAD is on a branch, and the branch has an upstream. Each failure has a typed error (`ErrGitNotFound`, `ErrNotRepository`, `ErrMergeInProgress`, `ErrUnbornBranch`, `ErrDetachedHead`, `ErrNoUpstream`, `ErrLocked`, `GitError`, `ConflictError`). Precondition errors keep git's stderr.
+- Staging, the staged check, and the commit use pathspecs that match `storage.ListFiles` (`*.[mM][dD]` outside hidden directories). Add is skipped when no snippet file exists, because git rejects a wildcard pathspec that matches nothing.
+- On a failed pull, `MERGE_HEAD` is checked on a fresh 10s context. If a merge is in progress, unmerged files are listed repo-wide (`core.quotePath=false`, repo-root relative) and `merge --abort` always runs, so a conflict outside the snippet directory or a timeout mid-pull never leaves a merge in progress. Every mode aborts, because `-X` cannot resolve modify/delete conflicts.
 - `Describe` maps errors to a stable kind and an actionable message. `Summary` and `NewStatus` feed the CLI and GUI.
 - Integration tests run against real repositories (bare remote plus two clones): commit/push/pull, deletion sync, manual conflict abort, local and remote strategies, modify/delete conflict, commit scoping to the snippet directory, repository errors, Korean file names.
 
@@ -20,7 +21,7 @@
 - A `ConflictError` pauses automatic sync. A successful manual run clears the pause. A canceled manual run emits no event and leaves the pause unchanged.
 
 ## CLI (Task 5)
-- `snipgo sync` loads the config, runs one sync with a 2 minute timeout, prints the summary, and returns an error (exit code 1) with the described message on failure.
+- `snipgo sync` loads the config, runs one sync with a 2 minute timeout canceled by Ctrl+C, prints the summary, and returns an error (exit code 1) with the described message on failure, without the usage dump. A conflict prints the files and the CLI resolution steps.
 
 ## GUI backend (Task 6)
 - `app.App` starts the scheduler on startup when `sync.enabled` is true and restarts it on `SetDataDirectory` and `SaveSyncSettings`. `OnShutdown` stops it first.
@@ -39,9 +40,17 @@
 - Task 7: the toast mock is typed `Mock<(toast: Omit<Toast, "id">) => void>` because `ReturnType<typeof vi.fn>` failed `tsc`.
 - Task 8 fix round: a rejected `SyncNow` is surfaced, and a sync load failure is isolated from the data directory setting.
 
+## Final Fix Wave
+- A failed pull always aborts an in-progress merge, including conflicts only in files outside the snippet directory.
+- Only snippet files are staged and committed. `.DS_Store`, swap files, `.obsidian` state, and nested repositories are left alone.
+- New error kinds `unborn_branch` and `detached_head`. The CLI prints CLI-specific conflict steps.
+- Settings updates the last run line and paused notice live. Automatic `pull`, `push`, and `timeout` errors are deduped by kind.
+- README and FEATURES warn that inside a larger repository sync merges and pushes the whole branch.
+
 ## Tests
-- `internal/gitsync`: 27 test functions (fake runner unit tests, scheduler, describe, real-repository integration, runner timeout). `internal/config`: 8. `cmd/snipgo`: 28 including `TestSyncAndReport`.
-- Frontend: 78 tests passed in 9 files after Task 8.
+- `internal/gitsync`: 30 test functions (fake runner unit tests, scheduler, describe, real-repository integration, runner timeout). `internal/config`: 8. `cmd/snipgo`: 29 including `TestSyncAndReport`.
+- Frontend: 86 tests passed in 9 files, run in the final fix wave.
+- The final fix wave ran `gofmt -l .`, `go vet ./...`, `go test -count=1 ./...`, `go test -race -count=1 ./internal/gitsync/`, `npx vitest run`, `npx tsc --noEmit`, and `make build-gui`, all passing.
 - `app/` has no automated tests. The Wails wiring was verified by `make build-gui` only.
 
 ## Known Limitations
