@@ -65,6 +65,11 @@ function App() {
     setListRefreshKey((k) => k + 1); // 목록 갱신
   };
 
+  const handleSnippetDeleted = (id: string) => {
+    setSelectedSnippet((current) => (current?.id === id ? null : current));
+    setListRefreshKey((k) => k + 1);
+  };
+
   const handleSettingsChange = useCallback(() => {
     // 설정 변경 후 목록 새로고침
     setSelectedSnippet(null);
@@ -135,6 +140,7 @@ function App() {
           </div>
           <SnippetList
             onSelect={handleSelectSnippet}
+            onSnippetDeleted={handleSnippetDeleted}
             searchQuery={searchQuery}
             selectedId={selectedSnippet?.id}
             refreshKey={listRefreshKey}

@@ -10,6 +10,7 @@ import { SnippetMetaInfo } from "./SnippetMetaInfo";
 import { ActionButtons } from "./ActionButtons";
 import { CodeEditor } from "./CodeEditor";
 import { VariablePromptModal } from "./VariablePromptModal";
+import { confirmAndDeleteSnippet } from "../actions/deleteSnippet";
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
@@ -119,22 +120,7 @@ export function SnippetEditor({
 
   const handleDelete = useCallback(async () => {
     if (!snippet) return;
-    try {
-      const confirmed = await app.ConfirmDialog(
-        "Delete Snippet",
-        "Are you sure you want to delete this snippet?"
-      );
-      if (!confirmed) return;
-
-      await app.DeleteSnippet(snippet.id);
-      await app.ReloadSnippets();
-      onDelete();
-    } catch (err) {
-      app.AlertDialog("SnipGo",
-        "Failed to delete snippet: " +
-          (err instanceof Error ? err.message : "Unknown error")
-      );
-    }
+    if (await confirmAndDeleteSnippet(snippet.id)) onDelete();
   }, [snippet, onDelete]);
 
   const handleToggleRawMode = useCallback(() => {

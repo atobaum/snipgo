@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { Snippet } from './types';
@@ -345,6 +345,45 @@ describe('App', () => {
         expect(screen.queryByText('Deleted on disk')).not.toBeInTheDocument();
       });
       expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+    });
+  });
+  describe('컨텍스트 메뉴 삭제', () => {
+    it('열려 있는 snippet을 삭제하면 에디터를 비우고 목록을 갱신한다', async () => {
+      const { app } = await import('./bridge');
+      const user = userEvent.setup();
+      render(<App />);
+
+      await waitFor(() => expect(screen.getByText('First Snippet')).toBeInTheDocument());
+      await user.click(screen.getByText('First Snippet'));
+      await waitFor(() => expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument());
+      const loadCount = vi.mocked(app.GetAllSnippets).mock.calls.length;
+
+      fireEvent.contextMenu(screen.getByRole('heading', { name: 'First Snippet' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => {
+        expect(app.DeleteSnippet).toHaveBeenCalledWith('1');
+        expect(screen.getByText('Select a snippet to edit')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(vi.mocked(app.GetAllSnippets).mock.calls.length).toBeGreaterThan(loadCount);
+      });
+    });
+
+    it('다른 snippet을 삭제하면 열린 snippet은 유지한다', async () => {
+      const { app } = await import('./bridge');
+      const user = userEvent.setup();
+      render(<App />);
+
+      await waitFor(() => expect(screen.getByText('First Snippet')).toBeInTheDocument());
+      await user.click(screen.getByText('First Snippet'));
+      await waitFor(() => expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument());
+
+      fireEvent.contextMenu(screen.getByText('Second Snippet'));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => expect(app.DeleteSnippet).toHaveBeenCalledWith('2'));
+      expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument();
     });
   });
 });
