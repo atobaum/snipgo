@@ -17,4 +17,23 @@ export interface Variable {
   choices?: string[];
 }
 
+export interface SyncStatus {
+  lastRunAt: string;
+  ok: boolean;
+  manual: boolean;
+  summary: string;
+  errorKind: string;
+  message: string;
+  conflictFiles: string[];
+  paused: boolean;
+}
+
+export type SyncConflict = "manual" | "local" | "remote";
+
+export interface SyncSettings {
+  enabled: boolean;
+  intervalMinutes: number;
+  conflict: SyncConflict;
+}
+
 

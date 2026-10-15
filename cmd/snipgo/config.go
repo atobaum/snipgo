@@ -52,7 +52,7 @@ var configShowCmd = &cobra.Command{
 var configSetCmd = &cobra.Command{
 	Use:   "set [key] [value]",
 	Short: "Set a configuration value",
-	Long:  "Set a configuration value. Available keys: data_directory",
+	Long:  "Set a configuration value. Available keys: data_directory, sync.enabled, sync.interval_minutes, sync.conflict",
 	Args:  cobra.ExactArgs(2),
 	RunE:  runConfigSet,
 }
@@ -86,6 +86,9 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Println("Current configuration:")
 	fmt.Printf("  Config File: %s\n", configPath)
 	fmt.Printf("  Data Directory: %s\n", cfg.DataDirectory)
+	fmt.Printf("  Sync Enabled: %t\n", cfg.Sync.Enabled)
+	fmt.Printf("  Sync Interval: %d minutes\n", cfg.Sync.IntervalMinutes)
+	fmt.Printf("  Sync Conflict: %s\n", cfg.Sync.Conflict)
 
 	return nil
 }
@@ -99,11 +102,8 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	switch key {
-	case "data_directory":
-		cfg.DataDirectory = value
-	default:
-		return fmt.Errorf("unknown configuration key: %s", key)
+	if err := config.SetValue(cfg, key, value); err != nil {
+		return err
 	}
 
 	if err := config.SaveConfig(cfg); err != nil {

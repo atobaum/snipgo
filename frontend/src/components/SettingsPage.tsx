@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { app } from "../bridge";
+import { app, onSyncStatus } from "../bridge";
+import { SyncSettings, SyncStatus } from "../types";
+import { SyncSettingsSection } from "./SyncSettingsSection";
+
+const EMPTY_STATUS: SyncStatus = { lastRunAt: "", ok: false, manual: false, summary: "", errorKind: "", message: "", conflictFiles: [], paused: false };
 
 interface SettingsPageProps {
   onClose: () => void;
@@ -10,6 +14,10 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
   const [configPath, setConfigPath] = useState("");
   const [dataDirectory, setDataDirectory] = useState("");
   const [originalDataDirectory, setOriginalDataDirectory] = useState("");
+  const [sync, setSync] = useState<SyncSettings | null>(null);
+  const [originalSync, setOriginalSync] = useState<SyncSettings | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(EMPTY_STATUS);
+  const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +33,17 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
         setConfigPath(configPathResult);
         setDataDirectory(dataDirectoryResult);
         setOriginalDataDirectory(dataDirectoryResult);
+        try {
+          const [syncResult, statusResult] = await Promise.all([
+            app.GetSyncSettings(),
+            app.GetSyncStatus(),
+          ]);
+          setSync(syncResult);
+          setOriginalSync(syncResult);
+          setSyncStatus(statusResult);
+        } catch (err) {
+          setError(`Failed to load sync settings: ${err instanceof Error ? err.message : String(err)}`);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load settings");
       } finally {
@@ -33,6 +52,8 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
     };
     loadSettings();
   }, []);
+
+  useEffect(() => onSyncStatus(setSyncStatus), []);
 
   const handleBrowse = async () => {
     try {
@@ -45,18 +66,32 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
     }
   };
 
+  const dataDirDirty = dataDirectory !== originalDataDirectory;
+  const syncDirty = JSON.stringify(sync) !== JSON.stringify(originalSync);
+  const isDirty = dataDirDirty || syncDirty;
+
   const handleSave = async () => {
-    if (dataDirectory === originalDataDirectory) {
+    if (!isDirty) {
       onClose();
+      return;
+    }
+    if (sync && (!Number.isInteger(sync.intervalMinutes) || sync.intervalMinutes < 1)) {
+      setError("Interval must be at least 1 minute");
       return;
     }
 
     try {
       setSaving(true);
       setError(null);
-      await app.SetDataDirectory(dataDirectory);
-      setOriginalDataDirectory(dataDirectory);
-      onSettingsChange();
+      if (dataDirDirty) {
+        await app.SetDataDirectory(dataDirectory);
+        setOriginalDataDirectory(dataDirectory);
+        onSettingsChange();
+      }
+      if (syncDirty && sync) {
+        await app.SaveSyncSettings(sync);
+        setOriginalSync(sync);
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -65,7 +100,17 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
     }
   };
 
-  const isDirty = dataDirectory !== originalDataDirectory;
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      setSyncStatus(await app.SyncNow());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -140,6 +185,16 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
               Directory where snippet files are stored
             </p>
           </div>
+
+          {sync && (
+            <SyncSettingsSection
+              value={sync}
+              onChange={setSync}
+              status={syncStatus}
+              onSyncNow={handleSyncNow}
+              syncing={syncing}
+            />
+          )}
         </div>
 
         {/* Footer */}

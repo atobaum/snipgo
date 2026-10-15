@@ -77,6 +77,7 @@ func init() {
 	rootCmd.AddCommand(copyCmd)
 	rootCmd.AddCommand(execCmd)
 	rootCmd.AddCommand(editCmd)
+	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(versionCmd)
 	completionCmd.AddCommand(completionZshCmd)
 	rootCmd.AddCommand(completionCmd)

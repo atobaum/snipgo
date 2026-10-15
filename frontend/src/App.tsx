@@ -6,8 +6,13 @@ import { TagList } from './components/TagList';
 import { SettingsPage } from './components/SettingsPage';
 import { app } from './bridge';
 import { useHotReload } from './hooks/useHotReload';
+import { useToasts } from './hooks/useToasts';
+import { useSyncNotifications } from './hooks/useSyncNotifications';
+import { ToastViewport } from './components/ToastViewport';
 
 function App() {
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
+  useSyncNotifications(pushToast);
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [listRefreshKey, setListRefreshKey] = useState(0);
@@ -169,6 +174,8 @@ function App() {
           onSettingsChange={handleSettingsChange}
         />
       )}
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

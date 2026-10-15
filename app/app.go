@@ -10,6 +10,7 @@ import (
 
 	"snipgo/internal/config"
 	"snipgo/internal/core"
+	"snipgo/internal/gitsync"
 	"snipgo/internal/history"
 	"snipgo/internal/tmpl"
 	"snipgo/internal/watcher"
@@ -19,7 +20,9 @@ import (
 
 const (
 	snippetsChangedEvent = "snippets:changed"
+	syncStatusEvent      = "sync:status"
 	watchDebounce        = 200 * time.Millisecond
+	syncTimeout          = 2 * time.Minute
 )
 
 // App struct
@@ -30,6 +33,19 @@ type App struct {
 
 	watcherMu sync.Mutex
 	watcher   *watcher.Watcher
+
+	// Lock order: syncMu -> runMu -> statusMu. Callbacks only ever take statusMu.
+	syncMu       sync.Mutex
+	scheduler    *gitsync.Scheduler
+	manualCtx    context.Context
+	cancelManual context.CancelFunc
+	manualRuns   sync.WaitGroup
+
+	runMu sync.Mutex
+
+	statusMu       sync.Mutex
+	syncStatus     gitsync.Status
+	syncGeneration uint64
 }
 
 // NewApp creates a new App application struct
@@ -53,6 +69,7 @@ func NewApp() (*App, error) {
 	app := &App{
 		manager:    manager,
 		varHistory: varHistory,
+		syncStatus: gitsync.Status{ConflictFiles: []string{}},
 	}
 
 	// Load all snippets on startup
@@ -68,10 +85,12 @@ func NewApp() (*App, error) {
 func (a *App) OnStartup(ctx context.Context) {
 	a.ctx = ctx
 	a.restartWatcher()
+	a.restartSync()
 }
 
 // OnShutdown stops watching the data directory.
 func (a *App) OnShutdown(_ context.Context) {
+	a.stopSync()
 	a.watcherMu.Lock()
 	defer a.watcherMu.Unlock()
 	a.closeWatcher()
@@ -97,6 +116,130 @@ func (a *App) restartWatcher() {
 		return
 	}
 	a.watcher = w
+}
+
+// restartSync rebuilds the scheduler from the current config and data directory.
+func (a *App) restartSync() {
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+	a.restartSyncLocked()
+}
+
+func (a *App) restartSyncLocked() {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		slog.Warn("sync disabled: failed to load config", "error", err)
+		return
+	}
+
+	if a.cancelManual != nil {
+		a.cancelManual()
+	}
+	if a.scheduler != nil {
+		a.scheduler.Stop()
+	}
+	a.manualCtx, a.cancelManual = context.WithCancel(context.Background())
+
+	a.statusMu.Lock()
+	a.syncGeneration++
+	generation := a.syncGeneration
+	a.syncStatus.Paused = false
+	a.statusMu.Unlock()
+
+	syncer := gitsync.New(gitsync.ExecRunner{}, gitsync.Options{
+		Dir:      a.manager.GetDataDir(),
+		Conflict: gitsync.Mode(cfg.Sync.Conflict),
+	})
+	// runMu serializes git across scheduler instances so a new scheduler waits for a canceled run's cleanup.
+	run := func(ctx context.Context) (gitsync.Result, error) {
+		a.runMu.Lock()
+		defer a.runMu.Unlock()
+		ctx, cancel := context.WithTimeout(ctx, syncTimeout)
+		defer cancel()
+		return syncer.Sync(ctx)
+	}
+	onEvent := func(ev gitsync.Event) { a.onSyncEvent(generation, ev) }
+	a.scheduler = gitsync.NewScheduler(run, time.Duration(cfg.Sync.IntervalMinutes)*time.Minute, onEvent)
+	if cfg.Sync.Enabled {
+		a.scheduler.Start()
+	}
+}
+
+// stopSync cancels in-flight runs and waits for them to finish their cleanup.
+func (a *App) stopSync() {
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+	if a.cancelManual != nil {
+		a.cancelManual()
+	}
+	if a.scheduler != nil {
+		a.scheduler.Stop()
+	}
+	a.manualRuns.Wait()
+}
+
+// onSyncEvent must not take syncMu: Stop waits for the run that calls it.
+// Events from replaced schedulers are dropped so a stale run cannot overwrite the current status.
+func (a *App) onSyncEvent(generation uint64, ev gitsync.Event) {
+	status := gitsync.NewStatus(ev)
+	a.statusMu.Lock()
+	defer a.statusMu.Unlock()
+	if generation != a.syncGeneration {
+		return
+	}
+	a.syncStatus = status
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, syncStatusEvent, status)
+	}
+}
+
+// SyncNow runs a manual sync and returns the resulting status; errors are reported in the status.
+func (a *App) SyncNow() gitsync.Status {
+	a.syncMu.Lock()
+	if a.scheduler == nil {
+		a.restartSyncLocked()
+	}
+	scheduler, ctx := a.scheduler, a.manualCtx
+	if scheduler != nil {
+		a.manualRuns.Add(1)
+	}
+	a.syncMu.Unlock()
+
+	if scheduler != nil {
+		defer a.manualRuns.Done()
+		_, _ = scheduler.RunNow(ctx)
+	}
+	return a.GetSyncStatus()
+}
+
+func (a *App) GetSyncStatus() gitsync.Status {
+	a.statusMu.Lock()
+	defer a.statusMu.Unlock()
+	return a.syncStatus
+}
+
+func (a *App) GetSyncSettings() (config.SyncConfig, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return config.SyncConfig{}, fmt.Errorf("failed to load config: %w", err)
+	}
+	return cfg.Sync, nil
+}
+
+func (a *App) SaveSyncSettings(s config.SyncConfig) error {
+	if err := config.ValidateSync(s); err != nil {
+		return err
+	}
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	cfg.Sync = s
+	if err := config.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+	a.restartSync()
+	return nil
 }
 
 // closeWatcher must be called with watcherMu held.
@@ -244,6 +387,7 @@ func (a *App) SetDataDirectory(path string) error {
 
 	a.manager = newManager
 	a.restartWatcher()
+	a.restartSync()
 	return nil
 }
 
