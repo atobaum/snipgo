@@ -255,6 +255,21 @@ func TestWatcher_IgnoresSelfWrites(t *testing.T) {
 			wantChange: false,
 		},
 		{
+			name: "self recreate after external delete",
+			setup: func(t *testing.T, dir string) {
+				writeFile(t, filepath.Join(dir, "a.md"), "x")
+			},
+			act: func(t *testing.T, w *Watcher, dir string) {
+				p := filepath.Join(dir, "a.md")
+				if err := os.Remove(p); err != nil {
+					t.Fatal(err)
+				}
+				writeFile(t, p, "mine")
+				w.MarkSelfWrite(p)
+			},
+			wantChange: false,
+		},
+		{
 			name: "external write after self write",
 			act: func(t *testing.T, w *Watcher, dir string) {
 				p := filepath.Join(dir, "a.md")

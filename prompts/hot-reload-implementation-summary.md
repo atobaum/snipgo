@@ -32,6 +32,5 @@
 
 ## Known Limitations
 - With auto-save (1.5s), a dirty snippet that changed on disk is soon saved with the local edits, so local wins. The badge stays as a hint until another snippet is selected.
-- If the open snippet is deleted externally while it has unsaved edits, the selection is still cleared and those edits are dropped.
-- Changes inside `.git` or other dot-directories are not watched, while `ListFiles` still loads `.md` files from them on the next reload.
+- If the open snippet is deleted externally while it has unsaved edits, the edits are kept with a "Deleted on disk" badge and the next save recreates the file. The snippet is missing from the sidebar list until then.
 - `app/` has no automated tests. The Wails wiring was verified by `make build-gui` only, not by running the GUI.

@@ -303,5 +303,48 @@ describe('App', () => {
         expect(screen.getByText('Select a snippet to edit')).toBeInTheDocument();
       });
     });
+
+    const deleteWhileEditing = async () => {
+      const { app } = await import('./bridge');
+      const user = await selectFirstSnippet();
+
+      const titleInput = screen.getByDisplayValue('First Snippet');
+      await user.clear(titleInput);
+      await user.type(titleInput, 'Local Edit');
+
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([mockSnippets[1]]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+      return user;
+    };
+
+    it('수정 중인 snippet이 외부에서 삭제되면 편집 내용을 유지하고 삭제 안내를 표시한다', async () => {
+      await deleteWhileEditing();
+
+      await waitFor(() => {
+        expect(screen.getByText('Deleted on disk')).toBeInTheDocument();
+      });
+      expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+      expect(screen.queryByText('Select a snippet to edit')).not.toBeInTheDocument();
+    });
+
+    it('삭제 안내가 뜬 snippet을 저장하면 다시 기록하고 안내를 지운다', async () => {
+      const { app } = await import('./bridge');
+      const user = await deleteWhileEditing();
+      await waitFor(() => {
+        expect(screen.getByText('Deleted on disk')).toBeInTheDocument();
+      });
+
+      await user.keyboard('{Meta>}s{/Meta}');
+
+      await waitFor(() => {
+        expect(app.SaveSnippet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: '1', title: 'Local Edit' })
+        );
+        expect(screen.queryByText('Deleted on disk')).not.toBeInTheDocument();
+      });
+      expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+    });
   });
 });

@@ -11,6 +11,7 @@ interface HotReloadOptions {
 
 interface HotReloadState {
   changedOnDisk: boolean;
+  deletedOnDisk: boolean;
 }
 
 function sameContent(a: Snippet, b: Snippet): boolean {
@@ -26,7 +27,7 @@ function sameContent(a: Snippet, b: Snippet): boolean {
 
 /**
  * Applies external snippet file changes to the list and the open snippet.
- * Unsaved local edits are never overwritten; changedOnDisk flags the conflict instead.
+ * Unsaved local edits are never overwritten or dropped; changedOnDisk and deletedOnDisk flag the conflict instead.
  */
 export function useHotReload({
   selectedSnippet,
@@ -35,6 +36,7 @@ export function useHotReload({
   refreshList,
 }: HotReloadOptions): HotReloadState {
   const [changedOnDisk, setChangedOnDisk] = useState(false);
+  const [deletedOnDisk, setDeletedOnDisk] = useState(false);
   const selectedRef = useRef(selectedSnippet);
 
   useEffect(() => {
@@ -44,6 +46,11 @@ export function useHotReload({
   useEffect(() => {
     setChangedOnDisk(false);
   }, [selectedSnippet?.id]);
+
+  // Saving replaces the selected snippet object, and a save recreates the deleted file.
+  useEffect(() => {
+    setDeletedOnDisk(false);
+  }, [selectedSnippet]);
 
   useEffect(() => {
     return onSnippetsChanged(async () => {
@@ -62,9 +69,14 @@ export function useHotReload({
 
       const onDisk = snippets.find((s) => s.id === current.id);
       if (!onDisk) {
-        setSelectedSnippet(null);
+        if (isDirtyRef.current) {
+          setDeletedOnDisk(true);
+        } else {
+          setSelectedSnippet(null);
+        }
         return;
       }
+      setDeletedOnDisk(false);
       if (sameContent(onDisk, current)) return;
 
       if (isDirtyRef.current) {
@@ -76,5 +88,5 @@ export function useHotReload({
     });
   }, [refreshList, setSelectedSnippet, isDirtyRef]);
 
-  return { changedOnDisk };
+  return { changedOnDisk, deletedOnDisk };
 }

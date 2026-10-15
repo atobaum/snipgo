@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -444,6 +445,67 @@ func TestFileSystem_FileExists(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("FileSystem.FileExists() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFileSystem_ListFiles_SkipsHiddenDirectories(t *testing.T) {
+	tests := []struct {
+		name    string
+		rootDir string
+		files   []string
+		want    []string
+	}{
+		{
+			name:    "hidden directories at root are skipped",
+			rootDir: "snippets",
+			files:   []string{"a.md", ".git/objects/x.md", ".obsidian/y.md"},
+			want:    []string{"a.md"},
+		},
+		{
+			name:    "nested hidden directories are skipped",
+			rootDir: "snippets",
+			files:   []string{"sub/b.md", "sub/.hidden/c.md"},
+			want:    []string{"sub/b.md"},
+		},
+		{
+			name:    "hidden root directory is still listed",
+			rootDir: ".snipgo",
+			files:   []string{"a.md", "sub/b.md", ".git/x.md"},
+			want:    []string{"a.md", "sub/b.md"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), tt.rootDir)
+			for _, f := range tt.files {
+				p := filepath.Join(root, filepath.FromSlash(f))
+				if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+					t.Fatalf("MkdirAll error: %v", err)
+				}
+				if err := os.WriteFile(p, []byte("content"), 0644); err != nil {
+					t.Fatalf("WriteFile error: %v", err)
+				}
+			}
+			fs := &FileSystem{snippetsDir: root}
+
+			files, err := fs.ListFiles()
+			if err != nil {
+				t.Fatalf("ListFiles() error: %v", err)
+			}
+
+			got := make([]string, 0, len(files))
+			for _, f := range files {
+				rel, err := filepath.Rel(root, f)
+				if err != nil {
+					t.Fatalf("Rel error: %v", err)
+				}
+				got = append(got, filepath.ToSlash(rel))
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("ListFiles() = %v, want %v", got, tt.want)
 			}
 		})
 	}

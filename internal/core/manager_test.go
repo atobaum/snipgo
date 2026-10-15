@@ -947,3 +947,62 @@ func TestManager_FilePath(t *testing.T) {
 		})
 	}
 }
+
+func TestManager_Save_AfterExternalDelete(t *testing.T) {
+	tests := []struct {
+		name      string
+		reload    bool
+		newTitle  string
+		wantFiles []string
+	}{
+		{name: "path still cached", newTitle: "First", wantFiles: []string{"First.md"}},
+		{name: "path still cached with title change", newTitle: "Renamed", wantFiles: []string{"Renamed.md"}},
+		{name: "after reload", reload: true, newTitle: "First", wantFiles: []string{"First.md"}},
+		{name: "after reload with title change", reload: true, newTitle: "Renamed", wantFiles: []string{"Renamed.md"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestManager(t)
+			snippet := &Snippet{ID: "id-1", Title: "First", Body: "original"}
+			if err := m.Save(snippet); err != nil {
+				t.Fatalf("Save error: %v", err)
+			}
+			if err := os.Remove(m.filePaths["id-1"]); err != nil {
+				t.Fatalf("Remove error: %v", err)
+			}
+			if tt.reload {
+				if err := m.LoadAll(); err != nil {
+					t.Fatalf("LoadAll error: %v", err)
+				}
+			}
+
+			edited := &Snippet{ID: "id-1", Title: tt.newTitle, Body: "unsaved edit"}
+			if err := m.Save(edited); err != nil {
+				t.Fatalf("Save after external delete error: %v", err)
+			}
+
+			if got := snippetFilenames(t, m); strings.Join(got, ",") != strings.Join(tt.wantFiles, ",") {
+				t.Errorf("files = %v, want %v", got, tt.wantFiles)
+			}
+			fp, ok := m.FilePath("id-1")
+			if !ok || filepath.Base(fp) != tt.wantFiles[0] {
+				t.Errorf("FilePath = %v, %v, want %v", fp, ok, tt.wantFiles[0])
+			}
+			content, err := m.storage.ReadFile(fp)
+			if err != nil {
+				t.Fatalf("ReadFile error: %v", err)
+			}
+			saved, err := ParseFrontmatter(content)
+			if err != nil {
+				t.Fatalf("ParseFrontmatter error: %v", err)
+			}
+			if saved.Body != "unsaved edit" {
+				t.Errorf("saved body = %q, want %q", saved.Body, "unsaved edit")
+			}
+			if _, err := m.GetByID("id-1"); err != nil {
+				t.Errorf("GetByID error: %v", err)
+			}
+		})
+	}
+}

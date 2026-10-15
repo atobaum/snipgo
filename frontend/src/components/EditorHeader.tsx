@@ -6,6 +6,7 @@ interface EditorHeaderProps {
   onTitleChange: (value: string) => void;
   saveStatus: SaveStatus;
   changedOnDisk: boolean;
+  deletedOnDisk: boolean;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   rawMode: boolean;
@@ -19,6 +20,7 @@ export function EditorHeader({
   onTitleChange,
   saveStatus,
   changedOnDisk,
+  deletedOnDisk,
   isFavorite,
   onToggleFavorite,
   rawMode,
@@ -43,6 +45,14 @@ export function EditorHeader({
             title="This snippet was changed outside SnipGo. Your unsaved edits are kept and will overwrite it when saved."
           >
             Changed on disk
+          </span>
+        )}
+        {deletedOnDisk && (
+          <span
+            className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700"
+            title="This snippet's file was deleted outside SnipGo. Your unsaved edits are kept and saving will recreate the file."
+          >
+            Deleted on disk
           </span>
         )}
       </div>

@@ -53,7 +53,7 @@ function App() {
     setListRefreshKey((k) => k + 1);
   }, []);
 
-  const { changedOnDisk } = useHotReload({
+  const { changedOnDisk, deletedOnDisk } = useHotReload({
     selectedSnippet,
     setSelectedSnippet,
     isDirtyRef,
@@ -151,6 +151,7 @@ function App() {
             onDirtyChange={handleDirtyChange}
             onListRefresh={handleListRefresh}
             changedOnDisk={changedOnDisk}
+            deletedOnDisk={deletedOnDisk}
           />
         </main>
       </div>

@@ -106,7 +106,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 
 	currentPath, exists := m.filePaths[snippet.ID]
 	filePath := m.availableFilePath(snippet.Title, currentPath)
-	if exists && filePath != currentPath {
+	if exists && filePath != currentPath && m.storage.FileExists(currentPath) {
 		if err := m.storage.RenameFile(currentPath, filePath); err != nil {
 			return err
 		}
