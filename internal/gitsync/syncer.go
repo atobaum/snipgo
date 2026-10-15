@@ -146,21 +146,22 @@ func (s *Syncer) pull(ctx context.Context) error {
 	// The merge must be aborted even when ctx already ended, or the next run sees a merge in progress.
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 	defer cancel()
-	out, err := s.git(cleanupCtx, "status", "-c", "core.quotePath=false", "diff", "--name-only", "--diff-filter=U", "--", ".")
-	if err != nil {
+	if _, err := s.git(cleanupCtx, "status", "rev-parse", "-q", "--verify", "MERGE_HEAD"); err != nil {
 		return pullErr
 	}
 	var files []string
-	for _, line := range strings.Split(out, "\n") {
-		if line = strings.TrimSpace(line); line != "" {
-			files = append(files, line)
+	if out, err := s.git(cleanupCtx, "status", "-c", "core.quotePath=false", "diff", "--name-only", "--diff-filter=U"); err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				files = append(files, line)
+			}
 		}
-	}
-	if len(files) == 0 {
-		return pullErr
 	}
 	if _, err := s.git(cleanupCtx, "merge", "merge", "--abort"); err != nil {
 		return err
+	}
+	if len(files) == 0 {
+		return pullErr
 	}
 	return &ConflictError{Files: files}
 }

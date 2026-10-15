@@ -70,7 +70,14 @@ func newTestSyncer(r Runner, mode Mode) *Syncer {
 	})
 }
 
-const conflictKey = "-c core.quotePath=false diff --name-only --diff-filter=U -- ."
+const conflictKey = "-c core.quotePath=false diff --name-only --diff-filter=U"
+
+const mergeHeadKey = "rev-parse -q --verify MERGE_HEAD"
+
+var (
+	noMerge         = fakeResp{err: errors.New("exit status 1")}
+	mergeInProgress = fakeResp{stdout: "abc\n"}
+)
 
 const commitKey = "commit -m snipgo sync: 2026-10-15 21:50 (host) -- ."
 
@@ -174,14 +181,18 @@ func TestSync_PullFailures(t *testing.T) {
 	tests := []struct {
 		name      string
 		mode      Mode
+		inMerge   bool
 		conflicts string
 		wantFiles []string
+		wantAbort bool
 		wantOp    string
 	}{
-		{name: "manual conflict", mode: ModeManual, conflicts: "a.md\nb.md\n", wantFiles: []string{"a.md", "b.md"}},
-		{name: "conflict left by -X strategy", mode: ModeRemote, conflicts: "a.md\n", wantFiles: []string{"a.md"}},
-		{name: "non-ASCII file name", mode: ModeManual, conflicts: "한글.md\n", wantFiles: []string{"한글.md"}},
-		{name: "network failure", mode: ModeManual, conflicts: "", wantOp: "pull"},
+		{name: "manual conflict", mode: ModeManual, inMerge: true, conflicts: "a.md\nb.md\n", wantFiles: []string{"a.md", "b.md"}, wantAbort: true},
+		{name: "conflict left by -X strategy", mode: ModeRemote, inMerge: true, conflicts: "a.md\n", wantFiles: []string{"a.md"}, wantAbort: true},
+		{name: "non-ASCII file name", mode: ModeManual, inMerge: true, conflicts: "한글.md\n", wantFiles: []string{"한글.md"}, wantAbort: true},
+		{name: "conflict outside snippet dir", mode: ModeManual, inMerge: true, conflicts: ".zshrc\n", wantFiles: []string{".zshrc"}, wantAbort: true},
+		{name: "merge in progress without unmerged files", mode: ModeManual, inMerge: true, conflicts: "", wantAbort: true, wantOp: "pull"},
+		{name: "network failure", mode: ModeManual, inMerge: false, conflicts: "", wantAbort: false, wantOp: "pull"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -194,9 +205,15 @@ func TestSync_PullFailures(t *testing.T) {
 				pullKey += " -X theirs"
 			}
 			f.set(pullKey, pullFail)
+			if tt.inMerge {
+				f.set(mergeHeadKey, noMerge, mergeInProgress)
+			}
 			f.set(conflictKey, fakeResp{stdout: tt.conflicts})
 			_, err := newTestSyncer(f, tt.mode).Sync(context.Background())
 
+			if f.called("merge --abort") != tt.wantAbort {
+				t.Errorf("merge --abort called = %v, want %v (calls %v)", f.called("merge --abort"), tt.wantAbort, f.calls)
+			}
 			if tt.wantFiles != nil {
 				var ce *ConflictError
 				if !errors.As(err, &ce) {
@@ -205,17 +222,11 @@ func TestSync_PullFailures(t *testing.T) {
 				if !reflect.DeepEqual(ce.Files, tt.wantFiles) {
 					t.Errorf("Files = %v, want %v", ce.Files, tt.wantFiles)
 				}
-				if !f.called("merge --abort") {
-					t.Error("merge --abort not called")
-				}
 				return
 			}
 			var ge *GitError
 			if !errors.As(err, &ge) || ge.Op != tt.wantOp {
 				t.Fatalf("error = %v, want *GitError op %q", err, tt.wantOp)
-			}
-			if f.called("merge --abort") {
-				t.Error("merge --abort must not run without conflicts")
 			}
 		})
 	}
@@ -277,6 +288,7 @@ func TestSync_ConflictAbortedWhenContextEndsMidPull(t *testing.T) {
 	f := newFakeRunner()
 	f.onCall = map[string]func(){"pull --no-rebase --no-edit": cancel}
 	f.set("pull --no-rebase --no-edit", fakeResp{err: errors.New("exit status 1"), stderr: "CONFLICT"})
+	f.set(mergeHeadKey, noMerge, mergeInProgress)
 	f.set(conflictKey, fakeResp{stdout: "a.md\n"})
 	_, err := newTestSyncer(f, ModeManual).Sync(ctx)
 	if !errors.Is(err, context.Canceled) {

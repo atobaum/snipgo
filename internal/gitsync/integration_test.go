@@ -130,9 +130,39 @@ func assertCleanAfterAbort(t *testing.T, dir string) {
 	if out, err := exec.Command("git", "-C", dir, "rev-parse", "-q", "--verify", "MERGE_HEAD").CombinedOutput(); err == nil {
 		t.Errorf("MERGE_HEAD still present: %s", out)
 	}
+	if status := gitCmd(t, dir, "status", "--porcelain", "--untracked-files=no"); status != "" {
+		t.Errorf("working tree not clean after abort: %q", status)
+	}
 	content := readFile(t, filepath.Join(dir, "x.md"))
 	if strings.Contains(content, "<<<<<<<") {
 		t.Errorf("conflict markers left in x.md: %q", content)
+	}
+}
+
+func TestSync_ConflictOutsideSnippetDirIsAborted(t *testing.T) {
+	requireGit(t)
+	a, b := newRemoteWithClones(t)
+	writeFile(t, filepath.Join(a, "snippets", "s.md"), "snippet\n")
+	writeFile(t, filepath.Join(a, ".zshrc"), "base\n")
+	gitCmd(t, a, "add", ".")
+	gitCmd(t, a, "commit", "-m", "dotfiles")
+	gitCmd(t, a, "push")
+	gitCmd(t, b, "pull")
+
+	writeFile(t, filepath.Join(a, ".zshrc"), "from A\n")
+	gitCmd(t, a, "commit", "-am", "A zshrc")
+	gitCmd(t, a, "push")
+	writeFile(t, filepath.Join(b, ".zshrc"), "from B\n")
+	gitCmd(t, b, "commit", "-am", "B zshrc")
+
+	_, err := syncDir(t, filepath.Join(b, "snippets"), ModeManual)
+	var ce *ConflictError
+	if !errors.As(err, &ce) || len(ce.Files) != 1 || ce.Files[0] != ".zshrc" {
+		t.Fatalf("error = %v, want conflict in .zshrc", err)
+	}
+	assertCleanAfterAbort(t, b)
+	if got := readFile(t, filepath.Join(b, ".zshrc")); got != "from B\n" {
+		t.Errorf(".zshrc = %q, want local content kept", got)
 	}
 }
 
