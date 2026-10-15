@@ -112,6 +112,13 @@ snipgo config set data_directory /path/to/snippets
 ```bash
 # Create a new snippet interactively
 snipgo new
+snipgo new -m                                    # Multiline command input
+snipgo new -t "List ports" --tags net,mac -L bash  # Pre-fill title, tags, language
+
+# Save a command drafted elsewhere (no prompts when -t is given)
+pbpaste | snipgo new -t "List ports" --tags net,mac -L bash   # Body from stdin
+snipgo new -c -t "List ports"                    # Body from clipboard
+pbpaste | snipgo new -e -t "List ports"          # Review in $EDITOR with frontmatter pre-filled
 
 # List all snippets
 snipgo list
@@ -295,10 +302,10 @@ snipgo/
 
 **Completed Features:**
 - ✅ **Dynamic Templates**: `${VARIABLE_NAME}` placeholders with interactive prompts, defaults, choices, and variable history
+- ✅ **`new` Command Flags**: `-t`, `--tags`, `-L`, `-c` and piped stdin to save a snippet in one line
 
 **Planned Features:**
 - ⏳ **Hot Reload**: fsnotify-based file watcher for real-time GUI updates when files are modified externally (CLI → GUI sync)
-- ⏳ **CLI Enhancements**: Add flags to `new` command (`-t "Title" --tags "go,api"`) to pre-fill frontmatter before opening editor
 - ⏳ **GUI Improvements**:
   - Filtering and sorting by `is_favorite`
   - Enhanced tag management and filtering

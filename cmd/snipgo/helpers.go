@@ -86,8 +86,11 @@ func editContentInEditor(content []byte, tempFilePrefix string) ([]byte, error) 
 	beforeModTime := beforeStat.ModTime()
 
 	// Open editor
+	editorInput, closeEditorInput := openTTYOrStdin()
+	defer closeEditorInput()
+
 	cmd := exec.Command(editor, tmpPath)
-	cmd.Stdin = os.Stdin
+	cmd.Stdin = editorInput
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

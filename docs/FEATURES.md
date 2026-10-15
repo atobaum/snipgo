@@ -13,9 +13,11 @@
 - **자기 저장 무시.** 앱이 저장, 이름 변경, 삭제한 직후의 파일 상태를 기록해 두고, 그 상태 그대로인 파일의 이벤트는 무시합니다.
 - **관련.** git 동기화의 사전 작업입니다.
 
-### ⏳ `new` Command Flags
+### ✅ `new` Command Flags
 
-- **내용.** `snipgo new -t "Title" --tags "go,api"`처럼 frontmatter를 미리 채운 상태로 입력이나 에디터를 엽니다.
+- **내용.** `-t/--title`, `--tags`, `-L/--language`(`--lang` 별칭)로 frontmatter를 미리 채웁니다. `-e`와 함께 쓰면 채운 frontmatter와 본문을 에디터에서 바로 고칠 수 있습니다.
+- **클립보드와 stdin 입력.** `-c/--clipboard`이면 클립보드에서, stdin이 파이프이면 stdin에서 본문을 읽습니다. 끝의 줄바꿈 하나만 지우고 나머지는 그대로 저장합니다. `-t`까지 주면 프롬프트 없이 끝나므로 `pbpaste | snipgo new -t "List ports" --tags net,mac -L bash`처럼 한 줄로 저장할 수 있습니다.
+- **충돌 규칙.** `--clipboard`와 파이프 stdin, `--clipboard`나 파이프 stdin과 `-m`, `-m`과 `-e`는 함께 쓸 수 없습니다. stdin이 파이프인데 `-t`가 없으면 제목을 `/dev/tty`로 묻고, 터미널이 없으면 `-t`를 쓰라는 오류를 냅니다.
 
 ### ⏳ GUI Favorite Filter & Sort
 

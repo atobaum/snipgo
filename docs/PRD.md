@@ -99,8 +99,11 @@ services:
 ### 4.2 CLI
 
 - **`snipgo new`**
-  - 프롬프트로 제목과 본문을 입력받아 스니펫을 만듭니다. `-m`이면 여러 줄 본문을 입력받고, `-e`이면 `$EDITOR`를 엽니다.
-  - `-t "Title" --tags "go,api"` 같은 플래그를 주면 Frontmatter를 미리 채운 상태로 시작합니다.
+  - 프롬프트로 제목과 본문을 입력받아 스니펫을 만듭니다. `-m`이면 여러 줄 본문을 입력받습니다.
+  - `-t "Title" --tags "go,api" -L bash` 같은 플래그로 Frontmatter를 미리 채웁니다. `-t`를 주면 제목을 묻지 않습니다.
+  - 본문은 `-c`(클립보드), 파이프로 들어온 stdin, 프롬프트 순으로 고릅니다. 끝의 줄바꿈 하나만 지우고 그대로 저장하며, 비어 있으면 오류를 냅니다. `pbpaste | snipgo new -t "List ports"`처럼 프롬프트 없이 저장할 수 있습니다.
+  - `-e`이면 Frontmatter와 본문(클립보드나 stdin에서 읽은 내용)을 채운 문서를 `$EDITOR`로 엽니다.
+  - `-c`와 파이프 stdin, `-c`나 파이프 stdin과 `-m`, `-m`과 `-e`는 함께 쓸 수 없습니다. stdin이 파이프일 때 제목 프롬프트는 `/dev/tty`에서 읽고, 터미널이 없으면 `-t`를 요구합니다.
 - **`snipgo list`**
   - 짧은 ID, Title, Tags, Language, 즐겨찾기 여부를 표로 출력합니다.
 - **`snipgo search`**
