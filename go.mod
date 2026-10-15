@@ -5,6 +5,7 @@ go 1.27
 require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/chzyer/readline v1.5.1
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/spf13/cobra v1.10.2

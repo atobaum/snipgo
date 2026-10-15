@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SnippetList } from './SnippetList';
 import { Snippet } from '../types';
@@ -34,12 +34,17 @@ vi.mock('../bridge', () => ({
   app: {
     GetAllSnippets: vi.fn(),
     SearchSnippets: vi.fn(),
+    ConfirmDialog: vi.fn(),
+    DeleteSnippet: vi.fn(),
+    ReloadSnippets: vi.fn(),
+    AlertDialog: vi.fn(),
   },
 }));
 
 describe('SnippetList', () => {
   const defaultProps = {
     onSelect: vi.fn(),
+    onSnippetDeleted: vi.fn(),
     searchQuery: '',
     selectedId: undefined,
     refreshKey: 0,
@@ -50,6 +55,10 @@ describe('SnippetList', () => {
     const { app } = await import('../bridge');
     vi.mocked(app.GetAllSnippets).mockResolvedValue(mockSnippets);
     vi.mocked(app.SearchSnippets).mockResolvedValue([mockSnippets[0]]);
+    vi.mocked(app.ConfirmDialog).mockResolvedValue(true);
+    vi.mocked(app.DeleteSnippet).mockResolvedValue(undefined);
+    vi.mocked(app.ReloadSnippets).mockResolvedValue(undefined);
+    vi.mocked(app.AlertDialog).mockResolvedValue(undefined);
   });
 
   describe('렌더링', () => {
@@ -183,6 +192,117 @@ describe('SnippetList', () => {
       await waitFor(() => {
         expect(screen.getByText('No snippets found.')).toBeInTheDocument();
       });
+    });
+  });
+  describe('컨텍스트 메뉴', () => {
+    const openContextMenu = async (title: string) => {
+      await waitFor(() => expect(screen.getByText(title)).toBeInTheDocument());
+      fireEvent.contextMenu(screen.getByText(title), { clientX: 40, clientY: 60 });
+    };
+
+    it('우클릭 시 Delete 항목이 있는 메뉴를 커서 위치에 연다', async () => {
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      const menu = screen.getByRole('menu');
+      expect(menu).toHaveStyle({ left: '40px', top: '60px' });
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveClass('text-red-600');
+    });
+
+    it('우클릭은 기본 메뉴를 막는다', async () => {
+      render(<SnippetList {...defaultProps} />);
+      await waitFor(() => expect(screen.getByText('First Snippet')).toBeInTheDocument());
+
+      const notCancelled = fireEvent.contextMenu(screen.getByText('First Snippet'));
+      expect(notCancelled).toBe(false);
+    });
+
+    it('우클릭은 선택을 바꾸지 않는다', async () => {
+      render(<SnippetList {...defaultProps} selectedId="2" />);
+      await openContextMenu('First Snippet');
+
+      expect(defaultProps.onSelect).not.toHaveBeenCalled();
+      const firstItem = screen.getByText('First Snippet').closest('div[class*="cursor-pointer"]');
+      expect(firstItem).not.toHaveClass('bg-blue-50');
+    });
+
+    it('Delete 확인 시 삭제 후 onSnippetDeleted를 호출한다', async () => {
+      const { app } = await import('../bridge');
+      const user = userEvent.setup();
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => {
+        expect(app.DeleteSnippet).toHaveBeenCalledWith('1');
+        expect(app.ReloadSnippets).toHaveBeenCalled();
+        expect(defaultProps.onSnippetDeleted).toHaveBeenCalledWith('1');
+      });
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('Delete 취소 시 삭제하지 않는다', async () => {
+      const { app } = await import('../bridge');
+      vi.mocked(app.ConfirmDialog).mockResolvedValue(false);
+      const user = userEvent.setup();
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => expect(app.ConfirmDialog).toHaveBeenCalled());
+      expect(app.DeleteSnippet).not.toHaveBeenCalled();
+      expect(defaultProps.onSnippetDeleted).not.toHaveBeenCalled();
+    });
+
+    it('삭제 실패 시 AlertDialog로 알린다', async () => {
+      const { app } = await import('../bridge');
+      vi.mocked(app.DeleteSnippet).mockRejectedValue(new Error('boom'));
+      const user = userEvent.setup();
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => {
+        expect(app.AlertDialog).toHaveBeenCalledWith('SnipGo', 'Failed to delete snippet: boom');
+      });
+      expect(defaultProps.onSnippetDeleted).not.toHaveBeenCalled();
+    });
+
+    it('Escape를 누르면 닫힌다', async () => {
+      const user = userEvent.setup();
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('바깥을 클릭하면 닫힌다', async () => {
+      const user = userEvent.setup();
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      await user.click(document.body);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('목록을 스크롤하면 닫힌다', async () => {
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      fireEvent.scroll(screen.getByTestId('snippet-list-scroll'));
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('창이 포커스를 잃으면 닫힌다', async () => {
+      render(<SnippetList {...defaultProps} />);
+      await openContextMenu('First Snippet');
+
+      fireEvent.blur(window);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     });
   });
 });

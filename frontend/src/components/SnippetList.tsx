@@ -1,12 +1,15 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Snippet } from "../types";
 import { app } from "../bridge";
+import { confirmAndDeleteSnippet } from "../actions/deleteSnippet";
+import { ContextMenu, ContextMenuItem } from "./ContextMenu";
 
 type SortField = "name" | "created" | "updated";
 type SortOrder = "asc" | "desc";
 
 interface SnippetListProps {
   onSelect: (snippet: Snippet) => void;
+  onSnippetDeleted: (id: string) => void;
   searchQuery?: string;
   selectedId?: string;
   refreshKey?: number; // 저장 후 목록 갱신 트리거
@@ -28,6 +31,7 @@ function loadSortPreference(): { field: SortField; order: SortOrder } {
 
 export function SnippetList({
   onSelect,
+  onSnippetDeleted,
   searchQuery = "",
   selectedId,
   refreshKey = 0,
@@ -36,6 +40,8 @@ export function SnippetList({
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ snippet: Snippet; x: number; y: number } | null>(null);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   // Sort state with localStorage persistence
   const [sortField, setSortField] = useState<SortField>(() => loadSortPreference().field);
@@ -98,6 +104,16 @@ export function SnippetList({
     loadSnippets();
   }, [loadSnippets, refreshKey]);
 
+  const contextMenuItems = (snippet: Snippet): ContextMenuItem[] => [
+    {
+      label: "Delete",
+      danger: true,
+      onSelect: async () => {
+        if (await confirmAndDeleteSnippet(snippet.id)) onSnippetDeleted(snippet.id);
+      },
+    },
+  ];
+
   if (loading) {
     return (
       <div className="p-4">
@@ -129,7 +145,7 @@ export function SnippetList({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Sort selector */}
       <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 text-xs flex-shrink-0">
         <select
@@ -150,11 +166,19 @@ export function SnippetList({
         </button>
       </div>
       {/* Snippet list */}
-      <div className="divide-y divide-gray-100 overflow-y-auto">
+      <div
+        data-testid="snippet-list-scroll"
+        onScroll={closeContextMenu}
+        className="flex-1 min-h-0 divide-y divide-gray-100 overflow-y-auto"
+      >
       {sortedSnippets.map((snippet) => (
         <div
           key={snippet.id}
           onClick={() => onSelect(snippet)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ snippet, x: e.clientX, y: e.clientY });
+          }}
           className={`px-3 py-2 cursor-pointer transition-colors ${
             selectedId === snippet.id
               ? "bg-blue-50 border-l-2 border-blue-500"
@@ -201,6 +225,14 @@ export function SnippetList({
         </div>
       ))}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems(contextMenu.snippet)}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 }

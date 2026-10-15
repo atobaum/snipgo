@@ -106,7 +106,7 @@ func (m *Manager) Save(snippet *Snippet) error {
 
 	currentPath, exists := m.filePaths[snippet.ID]
 	filePath := m.availableFilePath(snippet.Title, currentPath)
-	if exists && filePath != currentPath {
+	if exists && filePath != currentPath && m.storage.FileExists(currentPath) {
 		if err := m.storage.RenameFile(currentPath, filePath); err != nil {
 			return err
 		}
@@ -160,6 +160,15 @@ func (m *Manager) GetByID(id string) (*Snippet, error) {
 
 	// Return a copy to prevent external modifications
 	return copySnippet(snippet), nil
+}
+
+// FilePath returns the file path backing the snippet with the given ID.
+func (m *Manager) FilePath(id string) (string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	fp, ok := m.filePaths[id]
+	return fp, ok
 }
 
 // GetAll returns all snippets

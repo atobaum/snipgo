@@ -12,10 +12,14 @@ import (
 	"snipgo/internal/tmpl"
 )
 
+func openTTY() (io.ReadCloser, error) {
+	return os.Open("/dev/tty")
+}
+
 // openTTYOrStdin returns a reader for user input.
 // Tries /dev/tty first (works in piped/zle contexts), falls back to os.Stdin.
 func openTTYOrStdin() (io.Reader, func()) {
-	tty, err := os.Open("/dev/tty")
+	tty, err := openTTY()
 	if err != nil {
 		return os.Stdin, func() {}
 	}

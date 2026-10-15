@@ -10,6 +10,7 @@ import { SnippetMetaInfo } from "./SnippetMetaInfo";
 import { ActionButtons } from "./ActionButtons";
 import { CodeEditor } from "./CodeEditor";
 import { VariablePromptModal } from "./VariablePromptModal";
+import { confirmAndDeleteSnippet } from "../actions/deleteSnippet";
 
 interface SnippetEditorProps {
   snippet: Snippet | null;
@@ -17,6 +18,8 @@ interface SnippetEditorProps {
   onDelete: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onListRefresh?: () => void;
+  changedOnDisk?: boolean;
+  deletedOnDisk?: boolean;
 }
 
 export function SnippetEditor({
@@ -25,6 +28,8 @@ export function SnippetEditor({
   onDelete,
   onDirtyChange,
   onListRefresh,
+  changedOnDisk = false,
+  deletedOnDisk = false,
 }: SnippetEditorProps) {
   // Form state management
   const form = useSnippetForm(snippet);
@@ -115,22 +120,7 @@ export function SnippetEditor({
 
   const handleDelete = useCallback(async () => {
     if (!snippet) return;
-    try {
-      const confirmed = await app.ConfirmDialog(
-        "Delete Snippet",
-        "Are you sure you want to delete this snippet?"
-      );
-      if (!confirmed) return;
-
-      await app.DeleteSnippet(snippet.id);
-      await app.ReloadSnippets();
-      onDelete();
-    } catch (err) {
-      app.AlertDialog("SnipGo",
-        "Failed to delete snippet: " +
-          (err instanceof Error ? err.message : "Unknown error")
-      );
-    }
+    if (await confirmAndDeleteSnippet(snippet.id)) onDelete();
   }, [snippet, onDelete]);
 
   const handleToggleRawMode = useCallback(() => {
@@ -211,6 +201,8 @@ ${form.body}`;
           title={form.title}
           onTitleChange={form.setTitle}
           saveStatus={saveStatus}
+          changedOnDisk={changedOnDisk}
+          deletedOnDisk={deletedOnDisk}
           isFavorite={form.isFavorite}
           onToggleFavorite={handleToggleFavorite}
           rawMode={rawMode}

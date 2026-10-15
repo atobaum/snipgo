@@ -1,5 +1,6 @@
 // Import Wails generated bindings
 import * as WailsApp from '../wailsjs/go/app/App';
+import { EventsOn } from '../wailsjs/runtime/runtime';
 import { core } from '../wailsjs/go/models';
 import { Snippet, Variable } from './types';
 
@@ -103,3 +104,10 @@ export const app: App = {
   GetVariableHistory: WailsApp.GetVariableHistory,
   SaveVariableHistory: WailsApp.SaveVariableHistory,
 };
+
+const SNIPPETS_CHANGED_EVENT = 'snippets:changed';
+
+// Subscribes to snippet file changes made outside the app. Returns an unsubscribe function.
+export function onSnippetsChanged(callback: () => void): () => void {
+  return EventsOn(SNIPPETS_CHANGED_EVENT, callback);
+}

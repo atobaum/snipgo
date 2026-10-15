@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { Snippet } from './types';
@@ -29,8 +29,14 @@ const mockSnippets: Snippet[] = [
   },
 ];
 
+let emitSnippetsChanged: () => void | Promise<void> = () => {};
+
 // Mock the bridge module
 vi.mock('./bridge', () => ({
+  onSnippetsChanged: vi.fn((callback: () => void | Promise<void>) => {
+    emitSnippetsChanged = callback;
+    return () => {};
+  }),
   app: {
     GetAllSnippets: vi.fn(),
     GetSnippet: vi.fn(),
@@ -214,5 +220,170 @@ describe('App', () => {
       });
     });
   });
-});
 
+  describe('외부 변경 (Hot Reload)', () => {
+    const selectFirstSnippet = async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByText('First Snippet')).toBeInTheDocument();
+      });
+      await user.click(screen.getByText('First Snippet'));
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument();
+      });
+      return user;
+    };
+
+    it('snippets:changed 이벤트를 받으면 목록을 다시 불러온다', async () => {
+      const { app } = await import('./bridge');
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByText('First Snippet')).toBeInTheDocument();
+      });
+
+      const added: Snippet = { ...mockSnippets[1], id: '3', title: 'Third Snippet' };
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([...mockSnippets, added]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Third Snippet')).toBeInTheDocument();
+      });
+    });
+
+    it('수정 중이 아닌 열린 snippet은 디스크 내용으로 갱신한다', async () => {
+      const { app } = await import('./bridge');
+      await selectFirstSnippet();
+
+      const changed: Snippet = { ...mockSnippets[0], title: 'Changed On Disk' };
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([changed, mockSnippets[1]]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Changed On Disk')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Changed on disk')).not.toBeInTheDocument();
+    });
+
+    it('수정 중인 snippet은 덮어쓰지 않고 변경 안내를 표시한다', async () => {
+      const { app } = await import('./bridge');
+      const user = await selectFirstSnippet();
+
+      const titleInput = screen.getByDisplayValue('First Snippet');
+      await user.clear(titleInput);
+      await user.type(titleInput, 'Local Edit');
+
+      const changed: Snippet = { ...mockSnippets[0], title: 'Changed On Disk' };
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([changed, mockSnippets[1]]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Changed on disk')).toBeInTheDocument();
+      });
+      expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+      expect(screen.queryByDisplayValue('Changed On Disk')).not.toBeInTheDocument();
+    });
+
+    it('열린 snippet이 외부에서 삭제되면 선택을 해제한다', async () => {
+      const { app } = await import('./bridge');
+      await selectFirstSnippet();
+
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([mockSnippets[1]]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Select a snippet to edit')).toBeInTheDocument();
+      });
+    });
+
+    const deleteWhileEditing = async () => {
+      const { app } = await import('./bridge');
+      const user = await selectFirstSnippet();
+
+      const titleInput = screen.getByDisplayValue('First Snippet');
+      await user.clear(titleInput);
+      await user.type(titleInput, 'Local Edit');
+
+      vi.mocked(app.GetAllSnippets).mockResolvedValue([mockSnippets[1]]);
+      await act(async () => {
+        await emitSnippetsChanged();
+      });
+      return user;
+    };
+
+    it('수정 중인 snippet이 외부에서 삭제되면 편집 내용을 유지하고 삭제 안내를 표시한다', async () => {
+      await deleteWhileEditing();
+
+      await waitFor(() => {
+        expect(screen.getByText('Deleted on disk')).toBeInTheDocument();
+      });
+      expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+      expect(screen.queryByText('Select a snippet to edit')).not.toBeInTheDocument();
+    });
+
+    it('삭제 안내가 뜬 snippet을 저장하면 다시 기록하고 안내를 지운다', async () => {
+      const { app } = await import('./bridge');
+      const user = await deleteWhileEditing();
+      await waitFor(() => {
+        expect(screen.getByText('Deleted on disk')).toBeInTheDocument();
+      });
+
+      await user.keyboard('{Meta>}s{/Meta}');
+
+      await waitFor(() => {
+        expect(app.SaveSnippet).toHaveBeenCalledWith(
+          expect.objectContaining({ id: '1', title: 'Local Edit' })
+        );
+        expect(screen.queryByText('Deleted on disk')).not.toBeInTheDocument();
+      });
+      expect(screen.getByDisplayValue('Local Edit')).toBeInTheDocument();
+    });
+  });
+  describe('컨텍스트 메뉴 삭제', () => {
+    it('열려 있는 snippet을 삭제하면 에디터를 비우고 목록을 갱신한다', async () => {
+      const { app } = await import('./bridge');
+      const user = userEvent.setup();
+      render(<App />);
+
+      await waitFor(() => expect(screen.getByText('First Snippet')).toBeInTheDocument());
+      await user.click(screen.getByText('First Snippet'));
+      await waitFor(() => expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument());
+      const loadCount = vi.mocked(app.GetAllSnippets).mock.calls.length;
+
+      fireEvent.contextMenu(screen.getByRole('heading', { name: 'First Snippet' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => {
+        expect(app.DeleteSnippet).toHaveBeenCalledWith('1');
+        expect(screen.getByText('Select a snippet to edit')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(vi.mocked(app.GetAllSnippets).mock.calls.length).toBeGreaterThan(loadCount);
+      });
+    });
+
+    it('다른 snippet을 삭제하면 열린 snippet은 유지한다', async () => {
+      const { app } = await import('./bridge');
+      const user = userEvent.setup();
+      render(<App />);
+
+      await waitFor(() => expect(screen.getByText('First Snippet')).toBeInTheDocument());
+      await user.click(screen.getByText('First Snippet'));
+      await waitFor(() => expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument());
+
+      fireEvent.contextMenu(screen.getByText('Second Snippet'));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+      await waitFor(() => expect(app.DeleteSnippet).toHaveBeenCalledWith('2'));
+      expect(screen.getByDisplayValue('First Snippet')).toBeInTheDocument();
+    });
+  });
+});

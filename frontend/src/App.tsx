@@ -5,6 +5,7 @@ import { SnippetEditor } from './components/SnippetEditor';
 import { TagList } from './components/TagList';
 import { SettingsPage } from './components/SettingsPage';
 import { app } from './bridge';
+import { useHotReload } from './hooks/useHotReload';
 
 function App() {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
@@ -52,9 +53,21 @@ function App() {
     setListRefreshKey((k) => k + 1);
   }, []);
 
+  const { changedOnDisk, deletedOnDisk } = useHotReload({
+    selectedSnippet,
+    setSelectedSnippet,
+    isDirtyRef,
+    refreshList: handleListRefresh,
+  });
+
   const handleDelete = () => {
     setSelectedSnippet(null);
     setListRefreshKey((k) => k + 1); // 목록 갱신
+  };
+
+  const handleSnippetDeleted = (id: string) => {
+    setSelectedSnippet((current) => (current?.id === id ? null : current));
+    setListRefreshKey((k) => k + 1);
   };
 
   const handleSettingsChange = useCallback(() => {
@@ -117,14 +130,17 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Tag List + Snippet List */}
-        <aside className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-          <TagList
-            selectedTag={selectedTag}
-            onSelectTag={handleSelectTag}
-            refreshKey={listRefreshKey}
-          />
+        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="flex-shrink-0 max-h-[40%] overflow-y-auto">
+            <TagList
+              selectedTag={selectedTag}
+              onSelectTag={handleSelectTag}
+              refreshKey={listRefreshKey}
+            />
+          </div>
           <SnippetList
             onSelect={handleSelectSnippet}
+            onSnippetDeleted={handleSnippetDeleted}
             searchQuery={searchQuery}
             selectedId={selectedSnippet?.id}
             refreshKey={listRefreshKey}
@@ -140,6 +156,8 @@ function App() {
             onDelete={handleDelete}
             onDirtyChange={handleDirtyChange}
             onListRefresh={handleListRefresh}
+            changedOnDisk={changedOnDisk}
+            deletedOnDisk={deletedOnDisk}
           />
         </main>
       </div>

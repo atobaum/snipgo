@@ -36,13 +36,16 @@ func (fs *FileSystem) GetSnippetsDir() string {
 	return fs.snippetsDir
 }
 
-// ListFiles returns all .md files in the snippets directory
+// ListFiles returns all .md files in the snippets directory, skipping hidden directories
 func (fs *FileSystem) ListFiles() ([]string, error) {
 	var files []string
 
 	err := filepath.WalkDir(fs.snippetsDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() && path != fs.snippetsDir && isHidden(d.Name()) {
+			return filepath.SkipDir
 		}
 		if !d.IsDir() && strings.HasSuffix(strings.ToLower(path), ".md") {
 			files = append(files, path)
@@ -55,6 +58,10 @@ func (fs *FileSystem) ListFiles() ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func isHidden(name string) bool {
+	return len(name) > 1 && strings.HasPrefix(name, ".")
 }
 
 // ReadFile reads the content of a file
