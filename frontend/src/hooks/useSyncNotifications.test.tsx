@@ -63,4 +63,22 @@ describe("useSyncNotifications", () => {
     act(() => emit({ ...base, manual: true, summary: "Synced: pushed" }));
     expect(push).toHaveBeenCalledWith({ kind: "success", title: "Synced", message: "Synced: pushed" });
   });
+
+  it.each(["pull", "push", "timeout"])("does not repeat automatic %s errors whose message varies", (errorKind) => {
+    act(() => emit({ ...base, ok: false, errorKind, message: "fatal: unable to access: Could not resolve host" }));
+    act(() => emit({ ...base, ok: false, errorKind, message: "ssh: connect to host github.com port 22: Network is unreachable" }));
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows automatic errors of other kinds again when the message changes", () => {
+    act(() => emit({ ...base, ok: false, errorKind: "git", message: "git commit failed: one" }));
+    act(() => emit({ ...base, ok: false, errorKind: "git", message: "git commit failed: two" }));
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows an automatic error again when the kind changes", () => {
+    act(() => emit({ ...base, ok: false, errorKind: "pull", message: "offline" }));
+    act(() => emit({ ...base, ok: false, errorKind: "push", message: "offline" }));
+    expect(push).toHaveBeenCalledTimes(2);
+  });
 });
