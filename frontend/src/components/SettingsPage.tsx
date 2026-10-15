@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { app } from "../bridge";
+import { app, onSyncStatus } from "../bridge";
 import { SyncSettings, SyncStatus } from "../types";
 import { SyncSettingsSection } from "./SyncSettingsSection";
 
@@ -52,6 +52,8 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
     };
     loadSettings();
   }, []);
+
+  useEffect(() => onSyncStatus(setSyncStatus), []);
 
   const handleBrowse = async () => {
     try {

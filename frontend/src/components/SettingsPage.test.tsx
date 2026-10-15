@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsPage } from "./SettingsPage";
+import { SyncStatus } from "../types";
+
+let emitSyncStatus: (s: SyncStatus) => void = () => {};
+const unsubscribeSyncStatus = vi.fn();
 
 vi.mock("../bridge", () => ({
+  onSyncStatus: vi.fn((cb: (s: SyncStatus) => void) => {
+    emitSyncStatus = cb;
+    return unsubscribeSyncStatus;
+  }),
   app: {
     GetConfigPath: vi.fn().mockResolvedValue("/c/config.yaml"),
     GetDataDirectory: vi.fn().mockResolvedValue("/data"),
@@ -71,5 +79,27 @@ describe("SettingsPage sync", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Sync now" }));
     expect(app.SyncNow).toHaveBeenCalled();
     expect(await screen.findByText(/Synced: pushed/)).toBeInTheDocument();
+  });
+
+  it("updates the last run line and paused notice from sync events while open", async () => {
+    const { unmount } = render(<SettingsPage onClose={vi.fn()} onSettingsChange={vi.fn()} />);
+    expect(await screen.findByText("Never synced")).toBeInTheDocument();
+    act(() =>
+      emitSyncStatus({
+        lastRunAt: "2026-10-15T21:50:00Z",
+        ok: false,
+        manual: false,
+        summary: "",
+        errorKind: "conflict",
+        message: "Sync conflict in 1 file(s): a.md.",
+        conflictFiles: ["a.md"],
+        paused: true,
+      }),
+    );
+    expect(screen.getByText(/failed: Sync conflict in 1 file\(s\): a\.md\./)).toBeInTheDocument();
+    expect(screen.getByText(/Automatic sync is paused/)).toBeInTheDocument();
+    expect(screen.getByText("a.md")).toBeInTheDocument();
+    unmount();
+    expect(unsubscribeSyncStatus).toHaveBeenCalled();
   });
 });
