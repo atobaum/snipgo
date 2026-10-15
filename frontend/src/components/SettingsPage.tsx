@@ -26,18 +26,24 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
     const loadSettings = async () => {
       try {
         setLoading(true);
-        const [configPathResult, dataDirectoryResult, syncResult, statusResult] = await Promise.all([
+        const [configPathResult, dataDirectoryResult] = await Promise.all([
           app.GetConfigPath(),
           app.GetDataDirectory(),
-          app.GetSyncSettings(),
-          app.GetSyncStatus(),
         ]);
         setConfigPath(configPathResult);
         setDataDirectory(dataDirectoryResult);
         setOriginalDataDirectory(dataDirectoryResult);
-        setSync(syncResult);
-        setOriginalSync(syncResult);
-        setSyncStatus(statusResult);
+        try {
+          const [syncResult, statusResult] = await Promise.all([
+            app.GetSyncSettings(),
+            app.GetSyncStatus(),
+          ]);
+          setSync(syncResult);
+          setOriginalSync(syncResult);
+          setSyncStatus(statusResult);
+        } catch (err) {
+          setError(`Failed to load sync settings: ${err instanceof Error ? err.message : String(err)}`);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load settings");
       } finally {
@@ -94,8 +100,11 @@ export function SettingsPage({ onClose, onSettingsChange }: SettingsPageProps) {
 
   const handleSyncNow = async () => {
     setSyncing(true);
+    setError(null);
     try {
       setSyncStatus(await app.SyncNow());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSyncing(false);
     }

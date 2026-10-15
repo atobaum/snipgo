@@ -47,6 +47,24 @@ describe("SettingsPage sync", () => {
     expect(app.SaveSyncSettings).not.toHaveBeenCalled();
   });
 
+  it("shows an error and re-enables sync now when sync now rejects", async () => {
+    const { app } = await import("../bridge");
+    vi.mocked(app.SyncNow).mockRejectedValue("boom");
+    render(<SettingsPage onClose={vi.fn()} onSettingsChange={vi.fn()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Sync now" }));
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sync now" })).toBeEnabled();
+  });
+
+  it("keeps the data directory usable when sync settings fail to load", async () => {
+    const { app } = await import("../bridge");
+    vi.mocked(app.GetSyncSettings).mockRejectedValue("no git");
+    render(<SettingsPage onClose={vi.fn()} onSettingsChange={vi.fn()} />);
+    expect(await screen.findByDisplayValue("/data")).toBeInTheDocument();
+    expect(screen.getByText("Failed to load sync settings: no git")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Automatic sync")).not.toBeInTheDocument();
+  });
+
   it("runs sync now and shows the result", async () => {
     const { app } = await import("../bridge");
     render(<SettingsPage onClose={vi.fn()} onSettingsChange={vi.fn()} />);
