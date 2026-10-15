@@ -77,6 +77,32 @@ func (a *App) DeleteSnippet(id string) error {
 	return a.manager.Delete(id)
 }
 
+// ConfirmDialog shows a native Yes/No dialog because window.confirm is a no-op in the macOS webview.
+func (a *App) ConfirmDialog(title, message string) (bool, error) {
+	result, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:          runtime.QuestionDialog,
+		Title:         title,
+		Message:       message,
+		Buttons:       []string{"Yes", "No"},
+		DefaultButton: "Yes",
+		CancelButton:  "No",
+	})
+	if err != nil {
+		return false, err
+	}
+	return result == "Yes", nil
+}
+
+// AlertDialog shows a native info dialog because window.alert is a no-op in the macOS webview.
+func (a *App) AlertDialog(title, message string) error {
+	_, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   title,
+		Message: message,
+	})
+	return err
+}
+
 // SearchSnippets searches snippets by query
 func (a *App) SearchSnippets(query string) ([]*core.Snippet, error) {
 	results := a.manager.Search(query)

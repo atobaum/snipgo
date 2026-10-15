@@ -40,6 +40,8 @@ vi.mock('./bridge', () => ({
     ReloadSnippets: vi.fn(),
     CopyToClipboard: vi.fn(),
     GetAllTags: vi.fn().mockResolvedValue([]),
+    ConfirmDialog: vi.fn(),
+    AlertDialog: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -57,11 +59,9 @@ vi.mock('@uiw/react-codemirror', () => ({
 describe('App', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    // Reset confirm mock
-    vi.spyOn(window, 'confirm').mockImplementation(() => true);
-    
     // Setup mocks
     const { app } = await import('./bridge');
+    vi.mocked(app.ConfirmDialog).mockResolvedValue(true);
     vi.mocked(app.GetAllSnippets).mockResolvedValue(mockSnippets);
     vi.mocked(app.GetSnippet).mockImplementation((id: string) => {
       const snippet = mockSnippets.find(s => s.id === id);
@@ -136,7 +136,7 @@ describe('App', () => {
 
   describe('저장 확인 다이얼로그', () => {
     it('dirty 상태에서 다른 아이템 선택 시 confirm 다이얼로그를 표시한다', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const { app } = await import('./bridge');
       const user = userEvent.setup();
       render(<App />);
 
@@ -160,13 +160,18 @@ describe('App', () => {
       await user.click(screen.getByText('Second Snippet'));
 
       // confirm이 호출되어야 함
-      expect(confirmSpy).toHaveBeenCalledWith(
-        '저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?'
-      );
+      await waitFor(() => {
+        expect(app.ConfirmDialog).toHaveBeenCalledWith(
+          'Unsaved Changes',
+          '저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?'
+        );
+        expect(screen.getByDisplayValue('Second Snippet')).toBeInTheDocument();
+      });
     });
 
     it('confirm에서 취소하면 선택이 변경되지 않는다', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const { app } = await import('./bridge');
+      vi.mocked(app.ConfirmDialog).mockResolvedValue(false);
       const user = userEvent.setup();
       render(<App />);
 
@@ -189,9 +194,9 @@ describe('App', () => {
       await user.click(screen.getByText('Second Snippet'));
 
       // 여전히 첫 번째 아이템의 modified title이 표시되어야 함
-      await waitFor(() => {
-        expect(screen.getByDisplayValue('Modified')).toBeInTheDocument();
-      });
+      await waitFor(() => expect(app.ConfirmDialog).toHaveBeenCalled());
+      expect(screen.getByDisplayValue('Modified')).toBeInTheDocument();
+      expect(app.GetSnippet).not.toHaveBeenCalledWith('2');
     });
   });
 

@@ -48,6 +48,8 @@ export interface App {
   ReloadSnippets(): Promise<void>;
   GetAllTags(): Promise<string[]>;
   CreateSnippet(title: string): Promise<Snippet>;
+  ConfirmDialog(title: string, message: string): Promise<boolean>;
+  AlertDialog(title: string, message: string): Promise<void>;
   // Settings
   GetConfigPath(): Promise<string>;
   GetDataDirectory(): Promise<string>;
@@ -85,6 +87,8 @@ export const app: App = {
     const result = await WailsApp.CreateSnippet(title);
     return convertSnippet(result);
   },
+  ConfirmDialog: WailsApp.ConfirmDialog,
+  AlertDialog: WailsApp.AlertDialog,
   // Settings
   GetConfigPath: WailsApp.GetConfigPath,
   GetDataDirectory: WailsApp.GetDataDirectory,

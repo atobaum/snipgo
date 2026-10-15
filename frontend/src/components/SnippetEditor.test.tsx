@@ -15,6 +15,8 @@ vi.mock("../bridge", () => ({
     ExtractVariables: vi.fn().mockResolvedValue([]),
     ExpandSnippet: vi.fn().mockResolvedValue(""),
     SaveVariableHistory: vi.fn().mockResolvedValue(undefined),
+    ConfirmDialog: vi.fn().mockResolvedValue(false),
+    AlertDialog: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -217,6 +219,70 @@ describe("SnippetEditor", () => {
 
       // UI도 변경되어야 함
       expect(screen.getByText("★ Favorite")).toBeInTheDocument();
+    });
+  });
+
+  describe("Cmd+S 저장", () => {
+    it("Cmd+S를 누르면 debounce를 기다리지 않고 바로 저장된다", async () => {
+      const { app } = await import("../bridge");
+      const user = userEvent.setup();
+      render(<SnippetEditor {...defaultProps} />);
+
+      await user.type(screen.getByTestId("codemirror-mock"), "x");
+      expect(app.SaveSnippet).not.toHaveBeenCalled();
+
+      await user.keyboard("{Meta>}s{/Meta}");
+
+      await waitFor(() => {
+        expect(app.SaveSnippet).toHaveBeenCalledWith(
+          expect.objectContaining({ body: 'console.log("hello");x' })
+        );
+      });
+    });
+  });
+
+  describe("삭제", () => {
+    it("네이티브 확인 다이얼로그에서 승인하면 삭제된다", async () => {
+      const { app } = await import("../bridge");
+      vi.mocked(app.ConfirmDialog).mockResolvedValue(true);
+      const user = userEvent.setup();
+      render(<SnippetEditor {...defaultProps} />);
+
+      await user.click(screen.getByTitle("More options"));
+      await user.click(screen.getByText("Delete"));
+
+      await waitFor(() => {
+        expect(app.DeleteSnippet).toHaveBeenCalledWith("test-id");
+        expect(defaultProps.onDelete).toHaveBeenCalled();
+      });
+    });
+
+    it("네이티브 확인 다이얼로그에서 취소하면 삭제하지 않는다", async () => {
+      const { app } = await import("../bridge");
+      vi.mocked(app.ConfirmDialog).mockResolvedValue(false);
+      const user = userEvent.setup();
+      render(<SnippetEditor {...defaultProps} />);
+
+      await user.click(screen.getByTitle("More options"));
+      await user.click(screen.getByText("Delete"));
+
+      await waitFor(() => expect(app.ConfirmDialog).toHaveBeenCalled());
+      expect(app.DeleteSnippet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("복사 알림", () => {
+    it("복사 후 네이티브 알림창으로 완료를 알린다", async () => {
+      const { app } = await import("../bridge");
+      const user = userEvent.setup();
+      render(<SnippetEditor {...defaultProps} />);
+
+      await user.click(screen.getByText("Copy to Clipboard"));
+
+      await waitFor(() => {
+        expect(app.CopyToClipboard).toHaveBeenCalledWith('console.log("hello");');
+        expect(app.AlertDialog).toHaveBeenCalledWith("SnipGo", "Copied to clipboard!");
+      });
     });
   });
 });

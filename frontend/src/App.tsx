@@ -24,7 +24,10 @@ function App() {
 
   const handleSelectSnippet = async (snippet: Snippet) => {
     if (isDirtyRef.current) {
-      const result = confirm('저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?');
+      const result = await app.ConfirmDialog(
+        'Unsaved Changes',
+        '저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?'
+      );
       if (!result) {
         return; // 사용자가 취소함
       }
@@ -67,7 +70,7 @@ function App() {
       setListRefreshKey((k) => k + 1);
     } catch (err) {
       console.error('Failed to create snippet:', err);
-      alert('Failed to create snippet: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      app.AlertDialog("SnipGo", 'Failed to create snippet: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
