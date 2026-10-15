@@ -129,7 +129,7 @@ export function SnippetList({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Sort selector */}
       <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-200 text-xs flex-shrink-0">
         <select
@@ -150,7 +150,7 @@ export function SnippetList({
         </button>
       </div>
       {/* Snippet list */}
-      <div className="divide-y divide-gray-100 overflow-y-auto">
+      <div className="flex-1 min-h-0 divide-y divide-gray-100 overflow-y-auto">
       {sortedSnippets.map((snippet) => (
         <div
           key={snippet.id}

@@ -125,12 +125,14 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Tag List + Snippet List */}
-        <aside className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-          <TagList
-            selectedTag={selectedTag}
-            onSelectTag={handleSelectTag}
-            refreshKey={listRefreshKey}
-          />
+        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="flex-shrink-0 max-h-[40%] overflow-y-auto">
+            <TagList
+              selectedTag={selectedTag}
+              onSelectTag={handleSelectTag}
+              refreshKey={listRefreshKey}
+            />
+          </div>
           <SnippetList
             onSelect={handleSelectSnippet}
             searchQuery={searchQuery}
