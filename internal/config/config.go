@@ -5,19 +5,98 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	ConflictManual = "manual"
+	ConflictLocal  = "local"
+	ConflictRemote = "remote"
+
+	defaultSyncIntervalMinutes = 10
+)
+
+// SyncConfig controls git sync of the data directory.
+type SyncConfig struct {
+	Enabled         bool   `yaml:"enabled" json:"enabled"`
+	IntervalMinutes int    `yaml:"interval_minutes" json:"intervalMinutes"`
+	Conflict        string `yaml:"conflict" json:"conflict"`
+}
+
+func DefaultSyncConfig() SyncConfig {
+	return SyncConfig{IntervalMinutes: defaultSyncIntervalMinutes, Conflict: ConflictManual}
+}
+
+func validConflict(c string) bool {
+	return c == ConflictManual || c == ConflictLocal || c == ConflictRemote
+}
+
+// ValidateSync rejects values a user tries to save.
+func ValidateSync(s SyncConfig) error {
+	if s.IntervalMinutes < 1 {
+		return fmt.Errorf("sync interval must be at least 1 minute, got %d", s.IntervalMinutes)
+	}
+	if !validConflict(s.Conflict) {
+		return fmt.Errorf("sync conflict must be one of manual, local, remote, got %q", s.Conflict)
+	}
+	return nil
+}
+
+// NormalizeSync replaces invalid values from a config file with defaults.
+func NormalizeSync(s SyncConfig) SyncConfig {
+	if s.IntervalMinutes < 1 {
+		slog.Warn("invalid sync.interval_minutes, using default", "value", s.IntervalMinutes, "default", defaultSyncIntervalMinutes)
+		s.IntervalMinutes = defaultSyncIntervalMinutes
+	}
+	if !validConflict(s.Conflict) {
+		slog.Warn("invalid sync.conflict, using default", "value", s.Conflict, "default", ConflictManual)
+		s.Conflict = ConflictManual
+	}
+	return s
+}
+
+// SetValue sets a config key from its string form, as used by `snipgo config set`.
+func SetValue(cfg *Config, key, value string) error {
+	switch key {
+	case "data_directory":
+		cfg.DataDirectory = value
+	case "sync.enabled":
+		b, err := strconv.ParseBool(strings.TrimSpace(value))
+		if err != nil {
+			return fmt.Errorf("sync.enabled must be true or false, got %q", value)
+		}
+		cfg.Sync.Enabled = b
+	case "sync.interval_minutes":
+		n, err := strconv.Atoi(strings.TrimSpace(value))
+		if err != nil || n < 1 {
+			return fmt.Errorf("sync.interval_minutes must be an integer of at least 1, got %q", value)
+		}
+		cfg.Sync.IntervalMinutes = n
+	case "sync.conflict":
+		if !validConflict(value) {
+			return fmt.Errorf("sync.conflict must be one of manual, local, remote, got %q", value)
+		}
+		cfg.Sync.Conflict = value
+	default:
+		return fmt.Errorf("unknown configuration key: %s", key)
+	}
+	return nil
+}
+
 // Config holds the application configuration
 type Config struct {
-	DataDirectory string `yaml:"data_directory"`
+	DataDirectory string     `yaml:"data_directory"`
+	Sync          SyncConfig `yaml:"sync"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		DataDirectory: "~/.config/snipgo/snippets",
+		Sync:          DefaultSyncConfig(),
 	}
 }
 
@@ -47,7 +126,7 @@ func LoadConfig() (*Config, error) {
 		return config, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	fileConfig := &Config{}
+	fileConfig := &Config{Sync: DefaultSyncConfig()}
 	if err := yaml.Unmarshal(data, fileConfig); err != nil {
 		return config, fmt.Errorf("failed to parse config file: %w", err)
 	}
@@ -56,6 +135,8 @@ func LoadConfig() (*Config, error) {
 	if fileConfig.DataDirectory != "" {
 		config.DataDirectory = fileConfig.DataDirectory
 	}
+
+	config.Sync = NormalizeSync(fileConfig.Sync)
 
 	config.DataDirectory = expandPath(config.DataDirectory)
 	return config, nil

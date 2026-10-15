@@ -446,3 +446,92 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+func writeConfig(t *testing.T, content string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SNIPGO_CONFIG_PATH", path)
+}
+
+func TestLoadConfig_Sync(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    SyncConfig
+	}{
+		{name: "missing sync block uses defaults", content: "data_directory: /tmp/s\n", want: SyncConfig{Enabled: false, IntervalMinutes: 10, Conflict: "manual"}},
+		{name: "full sync block", content: "sync:\n  enabled: true\n  interval_minutes: 5\n  conflict: remote\n", want: SyncConfig{Enabled: true, IntervalMinutes: 5, Conflict: "remote"}},
+		{name: "partial sync block keeps other defaults", content: "sync:\n  enabled: true\n", want: SyncConfig{Enabled: true, IntervalMinutes: 10, Conflict: "manual"}},
+		{name: "invalid interval falls back", content: "sync:\n  interval_minutes: 0\n", want: SyncConfig{IntervalMinutes: 10, Conflict: "manual"}},
+		{name: "invalid conflict falls back", content: "sync:\n  conflict: theirs\n", want: SyncConfig{IntervalMinutes: 10, Conflict: "manual"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			writeConfig(t, tt.content)
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig: %v", err)
+			}
+			if cfg.Sync != tt.want {
+				t.Errorf("Sync = %+v, want %+v", cfg.Sync, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetValue(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		value   string
+		check   func(c *Config) bool
+		wantErr bool
+	}{
+		{name: "data directory", key: "data_directory", value: "/x", check: func(c *Config) bool { return c.DataDirectory == "/x" }},
+		{name: "enable sync", key: "sync.enabled", value: "true", check: func(c *Config) bool { return c.Sync.Enabled }},
+		{name: "interval", key: "sync.interval_minutes", value: "15", check: func(c *Config) bool { return c.Sync.IntervalMinutes == 15 }},
+		{name: "conflict", key: "sync.conflict", value: "local", check: func(c *Config) bool { return c.Sync.Conflict == "local" }},
+		{name: "bad bool", key: "sync.enabled", value: "yes please", wantErr: true},
+		{name: "interval too small", key: "sync.interval_minutes", value: "0", wantErr: true},
+		{name: "interval not a number", key: "sync.interval_minutes", value: "ten", wantErr: true},
+		{name: "bad conflict", key: "sync.conflict", value: "theirs", wantErr: true},
+		{name: "unknown key", key: "sync.nope", value: "1", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := DefaultConfig()
+			err := SetValue(cfg, tt.key, tt.value)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("SetValue(%q, %q) = nil, want error", tt.key, tt.value)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("SetValue: %v", err)
+			}
+			if !tt.check(cfg) {
+				t.Errorf("SetValue(%q, %q) did not apply: %+v", tt.key, tt.value, cfg)
+			}
+		})
+	}
+}
+
+func TestSaveConfig_RoundTripsSync(t *testing.T) {
+	writeConfig(t, "")
+	cfg := DefaultConfig()
+	cfg.Sync = SyncConfig{Enabled: true, IntervalMinutes: 3, Conflict: "local"}
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Sync != cfg.Sync {
+		t.Errorf("round trip Sync = %+v, want %+v", loaded.Sync, cfg.Sync)
+	}
+}
