@@ -140,6 +140,7 @@ func TestSync_CommitOnlyWhenStaged(t *testing.T) {
 		wantCommit bool
 	}{
 		{name: "no snippet files", snippets: "", staged: "", wantAdd: false, wantCommit: false},
+		{name: "no snippet files but staged deletions", snippets: "", staged: "a.md\n", wantAdd: false, wantCommit: true},
 		{name: "nothing staged", snippets: "a.md\n", staged: "", wantAdd: true, wantCommit: false},
 		{name: "staged changes", snippets: "a.md\n", staged: "a.md\n", wantAdd: true, wantCommit: true},
 	}

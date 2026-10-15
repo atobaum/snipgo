@@ -384,3 +384,52 @@ func TestSync_NoSnippetFiles(t *testing.T) {
 		t.Errorf("sync = %+v, %v, want up to date", res, err)
 	}
 }
+
+func TestSync_CommitsStagedDeletionsOfLastSnippets(t *testing.T) {
+	requireGit(t)
+	a, b := newRemoteWithClones(t)
+	writeFile(t, filepath.Join(a, "one.md"), "1\n")
+	writeFile(t, filepath.Join(a, "two.md"), "2\n")
+	gitCmd(t, a, "add", ".")
+	gitCmd(t, a, "commit", "-m", "more")
+	gitCmd(t, a, "push")
+	if _, err := syncDir(t, b, ModeManual); err != nil {
+		t.Fatal(err)
+	}
+	names := []string{"x.md", "one.md", "two.md"}
+	for _, name := range names {
+		if err := os.Remove(filepath.Join(a, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hook := filepath.Join(a, ".git", "hooks", "pre-commit")
+	writeFile(t, hook, "#!/bin/sh\nexit 1\n")
+	if err := os.Chmod(hook, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := syncDir(t, a, ModeManual); err == nil {
+		t.Fatal("sync with failing hook succeeded")
+	}
+	if got := strings.TrimSpace(gitCmd(t, a, "diff", "--cached", "--name-only")); got == "" {
+		t.Fatal("deletions were not staged by the failed run")
+	}
+	if err := os.Remove(hook); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := syncDir(t, a, ModeManual)
+	if err != nil || !res.Committed || !res.Pushed {
+		t.Fatalf("sync = %+v, %v, want committed and pushed", res, err)
+	}
+	if got := strings.TrimSpace(gitCmd(t, a, "diff", "--cached", "--name-only")); got != "" {
+		t.Errorf("still staged: %q", got)
+	}
+	if _, err := syncDir(t, b, ModeManual); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if _, err := os.Stat(filepath.Join(b, name)); !os.IsNotExist(err) {
+			t.Errorf("%s still exists in B: %v", name, err)
+		}
+	}
+}

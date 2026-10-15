@@ -142,11 +142,13 @@ func (s *Syncer) sync(ctx context.Context) (Result, error) {
 func (s *Syncer) commitSnippets(ctx context.Context) (bool, error) {
 	// git add fails when a wildcard pathspec matches nothing.
 	snippets, err := s.git(ctx, "status", append([]string{"ls-files", "--cached", "--others", "--exclude-standard", "--"}, snippetPathspecs...)...)
-	if err != nil || strings.TrimSpace(snippets) == "" {
+	if err != nil {
 		return false, err
 	}
-	if _, err := s.git(ctx, "add", append([]string{"add", "-A", "--"}, snippetPathspecs...)...); err != nil {
-		return false, err
+	if strings.TrimSpace(snippets) != "" {
+		if _, err := s.git(ctx, "add", append([]string{"add", "-A", "--"}, snippetPathspecs...)...); err != nil {
+			return false, err
+		}
 	}
 	staged, err := s.git(ctx, "status", append([]string{"diff", "--cached", "--name-only", "--"}, snippetPathspecs...)...)
 	if err != nil || strings.TrimSpace(staged) == "" {
