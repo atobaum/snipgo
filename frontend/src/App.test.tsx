@@ -37,7 +37,12 @@ vi.mock('./bridge', () => ({
     emitSnippetsChanged = callback;
     return () => {};
   }),
+  onSyncStatus: vi.fn(() => () => {}),
   app: {
+    SyncNow: vi.fn(),
+    GetSyncStatus: vi.fn(),
+    GetSyncSettings: vi.fn(),
+    SaveSyncSettings: vi.fn(),
     GetAllSnippets: vi.fn(),
     GetSnippet: vi.fn(),
     SearchSnippets: vi.fn(),

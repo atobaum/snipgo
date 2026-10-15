@@ -1,8 +1,8 @@
 // Import Wails generated bindings
 import * as WailsApp from '../wailsjs/go/app/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
-import { core } from '../wailsjs/go/models';
-import { Snippet, Variable } from './types';
+import { config, core } from '../wailsjs/go/models';
+import { Snippet, SyncSettings, SyncStatus, Variable } from './types';
 
 // Convert Wails core.Snippet to our Snippet type
 function convertSnippet(wailsSnippet: core.Snippet): Snippet {
@@ -61,6 +61,11 @@ export interface App {
   ExpandSnippet(snippetID: string, values: Record<string, string>): Promise<string>;
   GetVariableHistory(varName: string): Promise<string[]>;
   SaveVariableHistory(values: Record<string, string>): Promise<void>;
+  // Sync
+  SyncNow(): Promise<SyncStatus>;
+  GetSyncStatus(): Promise<SyncStatus>;
+  GetSyncSettings(): Promise<SyncSettings>;
+  SaveSyncSettings(settings: SyncSettings): Promise<void>;
 }
 
 // Use Wails generated bindings with type conversion
@@ -103,6 +108,12 @@ export const app: App = {
   ExpandSnippet: WailsApp.ExpandSnippet,
   GetVariableHistory: WailsApp.GetVariableHistory,
   SaveVariableHistory: WailsApp.SaveVariableHistory,
+  // Sync
+  SyncNow: async () => (await WailsApp.SyncNow()) as SyncStatus,
+  GetSyncStatus: async () => (await WailsApp.GetSyncStatus()) as SyncStatus,
+  GetSyncSettings: async () => (await WailsApp.GetSyncSettings()) as SyncSettings,
+  SaveSyncSettings: (settings: SyncSettings) =>
+    WailsApp.SaveSyncSettings(config.SyncConfig.createFrom(settings)),
 };
 
 const SNIPPETS_CHANGED_EVENT = 'snippets:changed';
@@ -110,4 +121,10 @@ const SNIPPETS_CHANGED_EVENT = 'snippets:changed';
 // Subscribes to snippet file changes made outside the app. Returns an unsubscribe function.
 export function onSnippetsChanged(callback: () => void): () => void {
   return EventsOn(SNIPPETS_CHANGED_EVENT, callback);
+}
+
+const SYNC_STATUS_EVENT = 'sync:status';
+
+export function onSyncStatus(callback: (status: SyncStatus) => void): () => void {
+  return EventsOn(SYNC_STATUS_EVENT, callback);
 }
