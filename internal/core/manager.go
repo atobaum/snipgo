@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"regexp"
 	"sort"
+	"strings"
 	"sync"
+	"unicode"
 
 	"snipgo/internal/storage"
 	"snipgo/internal/tmpl"
@@ -16,10 +17,10 @@ import (
 // ErrSnippetNotFound is returned when no snippet exists for the given ID.
 var ErrSnippetNotFound = errors.New("snippet not found")
 
-// filenameUnsafe matches characters not allowed in snippet filenames.
-// Each character is replaced individually (no + quantifier) to preserve
-// identical output to the prior strings.ReplaceAll chain.
-var filenameUnsafe = regexp.MustCompile(`[/\\:*?"<>| ]`)
+const (
+	maxFilenameRunes = 100
+	fallbackFilename = "untitled"
+)
 
 // Manager manages snippets in memory and on disk
 type Manager struct {
@@ -103,11 +104,13 @@ func (m *Manager) Save(snippet *Snippet) error {
 		return fmt.Errorf("failed to serialize snippet: %w", err)
 	}
 
-	// Use cached file path if updating, otherwise generate new filename
-	filePath, exists := m.filePaths[snippet.ID]
-	if !exists {
-		filename := generateFilename(snippet)
-		filePath = filepath.Join(m.storage.GetSnippetsDir(), filename)
+	currentPath, exists := m.filePaths[snippet.ID]
+	filePath := m.availableFilePath(snippet.Title, currentPath)
+	if exists && filePath != currentPath {
+		if err := m.storage.RenameFile(currentPath, filePath); err != nil {
+			return err
+		}
+		m.filePaths[snippet.ID] = filePath
 	}
 
 	// Write to disk
@@ -172,10 +175,52 @@ func (m *Manager) GetAll() []*Snippet {
 	return snippets
 }
 
-// generateFilename generates a filename for a snippet
-func generateFilename(snippet *Snippet) string {
-	title := filenameUnsafe.ReplaceAllString(snippet.Title, "_")
-	return fmt.Sprintf("%s_%s.md", title, snippet.UpdatedAt.Format("20060102_150405"))
+// generateFilename builds a filename from a title, appending -N for N > 1
+func generateFilename(title string, n int) string {
+	base := sanitizeFilename(title)
+	if n > 1 {
+		return fmt.Sprintf("%s-%d.md", base, n)
+	}
+	return base + ".md"
+}
+
+// sanitizeFilename keeps letters, digits, '-', '_' and '.', replacing other runs with a single '_'.
+func sanitizeFilename(title string) string {
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range title {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsMark(r) || r == '-' || r == '.' {
+			b.WriteRune(r)
+			lastUnderscore = false
+			continue
+		}
+		if !lastUnderscore {
+			b.WriteRune('_')
+			lastUnderscore = true
+		}
+	}
+
+	const edgeChars = "_.-"
+	name := strings.Trim(b.String(), edgeChars)
+	if runes := []rune(name); len(runes) > maxFilenameRunes {
+		name = strings.TrimRight(string(runes[:maxFilenameRunes]), edgeChars)
+	}
+	if name == "" {
+		return fallbackFilename
+	}
+	return name
+}
+
+// availableFilePath returns the first title-based path not taken by another file.
+// currentPath counts as available so a snippet keeps its own file.
+func (m *Manager) availableFilePath(title, currentPath string) string {
+	dir := m.storage.GetSnippetsDir()
+	for n := 1; ; n++ {
+		candidate := filepath.Join(dir, generateFilename(title, n))
+		if candidate == currentPath || !m.storage.FileExists(candidate) || m.storage.SameFile(candidate, currentPath) {
+			return candidate
+		}
+	}
 }
 
 // copySnippet creates a deep copy of a snippet

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -563,73 +564,181 @@ func TestManager_GetAll(t *testing.T) {
 
 func TestGenerateFilename(t *testing.T) {
 	tests := []struct {
-		name    string
-		snippet *Snippet
-		want    string // We'll check pattern, not exact match due to timestamp
+		name  string
+		title string
+		want  string
 	}{
-		{
-			name: "normal title",
-			snippet: &Snippet{
-				Title:     "Test Snippet",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "Test_Snippet_20200101_123045.md",
-		},
-		{
-			name: "title with spaces",
-			snippet: &Snippet{
-				Title:     "My Test Snippet",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "My_Test_Snippet_20200101_123045.md",
-		},
-		{
-			name: "title with special characters",
-			snippet: &Snippet{
-				Title:     "Test/Snippet:With*Special?Chars",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "Test_Snippet_With_Special_Chars_20200101_123045.md",
-		},
-		{
-			name: "title with quotes",
-			snippet: &Snippet{
-				Title:     "Test\"Snippet\"",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "Test_Snippet__20200101_123045.md",
-		},
-		{
-			name: "title with angle brackets",
-			snippet: &Snippet{
-				Title:     "Test<Snippet>",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "Test_Snippet__20200101_123045.md",
-		},
-		{
-			name: "title with pipe",
-			snippet: &Snippet{
-				Title:     "Test|Snippet",
-				UpdatedAt: time.Date(2020, 1, 1, 12, 30, 45, 0, time.UTC),
-			},
-			want: "Test_Snippet_20200101_123045.md",
-		},
+		{name: "normal title", title: "Test Snippet", want: "Test_Snippet.md"},
+		{name: "path separators and reserved", title: "Test/Snippet:With*Special?Chars", want: "Test_Snippet_With_Special_Chars.md"},
+		{name: "quotes trimmed at end", title: "Test\"Snippet\"", want: "Test_Snippet.md"},
+		{name: "angle brackets", title: "Test<Snippet>", want: "Test_Snippet.md"},
+		{name: "pipe", title: "Test|Snippet", want: "Test_Snippet.md"},
+		{name: "korean kept", title: "도커 컴포즈 설정", want: "도커_컴포즈_설정.md"},
+		{name: "emoji replaced", title: "🚀 Deploy 🔥 prod", want: "Deploy_prod.md"},
+		{name: "punctuation collapsed", title: "a & b @ c#!", want: "a_b_c.md"},
+		{name: "dot and dash kept inside", title: "v1.2-release notes", want: "v1.2-release_notes.md"},
+		{name: "leading dot trimmed", title: "..hidden", want: "hidden.md"},
+		{name: "control characters", title: "line1\nline2\ttab", want: "line1_line2_tab.md"},
+		{name: "only emoji", title: "🎉🎉", want: "untitled.md"},
+		{name: "only spaces", title: "   ", want: "untitled.md"},
+		{name: "long title truncated", title: strings.Repeat("가", 150), want: strings.Repeat("가", 100) + ".md"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateFilename(tt.snippet)
-
-			if got != tt.want {
-				t.Errorf("generateFilename() = %v, want %v", got, tt.want)
-			}
-
-			// Verify it ends with .md
-			if len(got) < 3 || got[len(got)-3:] != ".md" {
-				t.Errorf("generateFilename() = %v, want to end with .md", got)
+			if got := generateFilename(tt.title, 1); got != tt.want {
+				t.Errorf("generateFilename(%q, 1) = %v, want %v", tt.title, got, tt.want)
 			}
 		})
+	}
+
+	if got := generateFilename("Same", 2); got != "Same-2.md" {
+		t.Errorf("generateFilename(\"Same\", 2) = %v, want Same-2.md", got)
+	}
+}
+
+func newTestManager(t *testing.T) *Manager {
+	t.Helper()
+	tmpDir := t.TempDir()
+	cleanup, err := setupTestConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to setup test config: %v", err)
+	}
+	t.Cleanup(cleanup)
+
+	m, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+	return m
+}
+
+func snippetFilenames(t *testing.T, m *Manager) []string {
+	t.Helper()
+	files, err := m.storage.ListFiles()
+	if err != nil {
+		t.Fatalf("Failed to list files: %v", err)
+	}
+	names := make([]string, 0, len(files))
+	for _, f := range files {
+		names = append(names, filepath.Base(f))
+	}
+	sort.Strings(names)
+	return names
+}
+
+func TestManager_Save_FilenameFollowsTitle(t *testing.T) {
+	tests := []struct {
+		name   string
+		titles []string
+		want   []string
+	}{
+		{name: "new snippet uses title", titles: []string{"Untitled"}, want: []string{"Untitled.md"}},
+		{name: "title change renames file", titles: []string{"Untitled", "Docker Compose"}, want: []string{"Docker_Compose.md"}},
+		{name: "unchanged title keeps file", titles: []string{"Keep", "Keep"}, want: []string{"Keep.md"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestManager(t)
+			snippet := &Snippet{ID: "id-1", Body: "body"}
+			for _, title := range tt.titles {
+				snippet.Title = title
+				if err := m.Save(snippet); err != nil {
+					t.Fatalf("Save(%q) error: %v", title, err)
+				}
+			}
+
+			got := snippetFilenames(t, m)
+			if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+				t.Errorf("files = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestManager_Save_FilenameCollision(t *testing.T) {
+	m := newTestManager(t)
+	first := &Snippet{ID: "id-1", Title: "Same", Body: "a"}
+	second := &Snippet{ID: "id-2", Title: "Other", Body: "b"}
+	for _, s := range []*Snippet{first, second} {
+		if err := m.Save(s); err != nil {
+			t.Fatalf("Save error: %v", err)
+		}
+	}
+
+	second.Title = "Same"
+	if err := m.Save(second); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if err := m.Save(second); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	want := []string{"Same-2.md", "Same.md"}
+	if got := snippetFilenames(t, m); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("files = %v, want %v", got, want)
+	}
+	if fp := m.filePaths["id-1"]; filepath.Base(fp) != "Same.md" {
+		t.Errorf("first snippet path = %v, want Same.md", fp)
+	}
+}
+
+func TestManager_Save_CaseOnlyTitleChange(t *testing.T) {
+	m := newTestManager(t)
+	snippet := &Snippet{ID: "id-1", Title: "docker", Body: "body"}
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	snippet.Title = "Docker"
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	files := snippetFilenames(t, m)
+	if len(files) != 1 || files[0] != "Docker.md" {
+		t.Fatalf("files = %v, want [Docker.md]", files)
+	}
+	content, err := m.storage.ReadFile(m.filePaths["id-1"])
+	if err != nil {
+		t.Fatalf("ReadFile error: %v", err)
+	}
+	saved, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("ParseFrontmatter error: %v", err)
+	}
+	if saved.Title != "Docker" {
+		t.Errorf("saved title = %v, want Docker", saved.Title)
+	}
+}
+
+func TestManager_Save_RenamesLegacyFilename(t *testing.T) {
+	m := newTestManager(t)
+	legacy := &Snippet{ID: "id-1", Title: "Legacy", Body: "body"}
+	content, err := SerializeFrontmatter(legacy)
+	if err != nil {
+		t.Fatalf("SerializeFrontmatter error: %v", err)
+	}
+	legacyPath := filepath.Join(m.storage.GetSnippetsDir(), "Legacy_20260101_000000.md")
+	if err := m.storage.WriteFile(legacyPath, content); err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+	if err := m.LoadAll(); err != nil {
+		t.Fatalf("LoadAll error: %v", err)
+	}
+
+	loaded, err := m.GetByID("id-1")
+	if err != nil {
+		t.Fatalf("GetByID error: %v", err)
+	}
+	if err := m.Save(loaded); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	want := []string{"Legacy.md"}
+	if got := snippetFilenames(t, m); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("files = %v, want %v", got, want)
 	}
 }
 

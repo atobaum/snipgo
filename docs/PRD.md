@@ -57,7 +57,7 @@
 ## 3. Data Schema
 
 - **저장 위치:** `~/.config/snipgo/snippets/`
-- **파일명 규칙:** `{Title}_{Timestamp}.md` (이름 중복을 막고 읽기 쉽게)
+- **파일명 규칙:** `{Title}.md`. 제목을 바꾸면 파일 이름도 바뀌고, 같은 이름이 있으면 `{Title}-2.md`처럼 번호를 붙입니다. 글자, 숫자, `-`, `_`, `.` 외의 문자는 `_`로 바꾸고 최대 100자까지 씁니다.
 - **파일 포맷:** YAML Frontmatter + Markdown Body
 
 ### Example: docker-compose-setup.md
