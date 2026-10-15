@@ -11,9 +11,9 @@
    - `manual` (default): abort the merge (`git merge --abort`), report the conflicted files, pause automatic sync until a manual sync succeeds.
    - `local`: merge with `-X ours`.
    - `remote`: merge with `-X theirs`.
-   No conflict markers are ever left in snippet files by SnipGo.
+   Conflicts that `-X` cannot resolve (e.g. modify/delete) are aborted and reported like `manual`. No conflict markers are ever left in snippet files by SnipGo.
 5. The user prepares the repository (`git init`, `git remote add`, upstream branch, authentication). SnipGo only syncs and reports clearly when something is missing.
-6. GUI shows toasts on errors (conflict, auth/network failure, missing repository or upstream, missing `git`) and on manual sync success. Successful automatic syncs are silent.
+6. GUI shows toasts on errors (conflict, auth/network failure, timeout, missing repository or upstream, missing `git`) and on manual sync success. Successful automatic syncs are silent. A repeated automatic error with the same kind and message is shown once until a sync succeeds.
 7. Settings live in `config.yaml` under `sync:` and are editable in the GUI Settings page and via `snipgo config set sync.<key> <value>`.
 8. Files changed by pull are picked up by the existing hot reload.
 
@@ -29,6 +29,7 @@
   ```
   Invalid values fall back to defaults with a warning. `interval_minutes` minimum is 1.
 - **Commit message:** `snipgo sync: <YYYY-MM-DD HH:MM> (<hostname>)`.
+- **No interactive prompts:** git runs with `GIT_TERMINAL_PROMPT=0` and each run has a 2 minute timeout, so a remote that wants a password fails fast instead of hanging. A run canceled by stopping the scheduler emits no event.
 - **Package layout**
   - `internal/gitsync`: `Runner` interface (`Run(ctx, dir, args...) (stdout, stderr string, err error)`) with an exec implementation; `Syncer` with `Sync(ctx) (Result, error)`; `Scheduler` with `Start`, `Stop`, `TriggerNow`, `Paused`.
   - Typed errors so callers can react without string parsing: `ErrGitNotFound`, `ErrNotRepository`, `ErrNoUpstream`, `ErrMergeInProgress`, `ErrLocked` (index.lock held by another git process), `*ConflictError{Files []string}`, `*RemoteError{Op string, Stderr string}` (pull/push failures such as auth or network).
