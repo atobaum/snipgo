@@ -162,6 +162,15 @@ func (m *Manager) GetByID(id string) (*Snippet, error) {
 	return copySnippet(snippet), nil
 }
 
+// FilePath returns the file path backing the snippet with the given ID.
+func (m *Manager) FilePath(id string) (string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	fp, ok := m.filePaths[id]
+	return fp, ok
+}
+
 // GetAll returns all snippets
 func (m *Manager) GetAll() []*Snippet {
 	m.mu.RLock()

@@ -917,3 +917,33 @@ func TestManager_ErrSnippetNotFound(t *testing.T) {
 		})
 	}
 }
+
+func TestManager_FilePath(t *testing.T) {
+	m := newTestManager(t)
+	snippet := &Snippet{ID: "id-1", Title: "First", Body: "body"}
+	if err := m.Save(snippet); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		id       string
+		wantBase string
+		wantOK   bool
+	}{
+		{name: "known snippet", id: "id-1", wantBase: "First.md", wantOK: true},
+		{name: "unknown snippet", id: "missing", wantBase: "", wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := m.FilePath(tt.id)
+			if ok != tt.wantOK {
+				t.Fatalf("FilePath(%q) ok = %v, want %v", tt.id, ok, tt.wantOK)
+			}
+			if ok && filepath.Base(got) != tt.wantBase {
+				t.Errorf("FilePath(%q) = %v, want base %v", tt.id, got, tt.wantBase)
+			}
+		})
+	}
+}

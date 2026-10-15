@@ -5,6 +5,7 @@ interface EditorHeaderProps {
   title: string;
   onTitleChange: (value: string) => void;
   saveStatus: SaveStatus;
+  changedOnDisk: boolean;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   rawMode: boolean;
@@ -17,6 +18,7 @@ export function EditorHeader({
   title,
   onTitleChange,
   saveStatus,
+  changedOnDisk,
   isFavorite,
   onToggleFavorite,
   rawMode,
@@ -35,6 +37,14 @@ export function EditorHeader({
           className="flex-1 text-xl font-semibold border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
         />
         <SaveStatusBadge status={saveStatus} />
+        {changedOnDisk && (
+          <span
+            className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700"
+            title="This snippet was changed outside SnipGo. Your unsaved edits are kept and will overwrite it when saved."
+          >
+            Changed on disk
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2 ml-4">
         <button

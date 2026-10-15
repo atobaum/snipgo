@@ -3,14 +3,23 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"snipgo/internal/config"
 	"snipgo/internal/core"
 	"snipgo/internal/history"
 	"snipgo/internal/tmpl"
+	"snipgo/internal/watcher"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const (
+	snippetsChangedEvent = "snippets:changed"
+	watchDebounce        = 200 * time.Millisecond
 )
 
 // App struct
@@ -18,6 +27,9 @@ type App struct {
 	ctx        context.Context
 	manager    *core.Manager
 	varHistory *history.VarHistory
+
+	watcherMu sync.Mutex
+	watcher   *watcher.Watcher
 }
 
 // NewApp creates a new App application struct
@@ -55,6 +67,69 @@ func NewApp() (*App, error) {
 // so we can call the runtime methods
 func (a *App) OnStartup(ctx context.Context) {
 	a.ctx = ctx
+	a.restartWatcher()
+}
+
+// OnShutdown stops watching the data directory.
+func (a *App) OnShutdown(_ context.Context) {
+	a.watcherMu.Lock()
+	defer a.watcherMu.Unlock()
+	a.closeWatcher()
+}
+
+// restartWatcher (re)starts hot reload for the current manager's data directory.
+// The callback keeps the manager it was started with so a later manager swap cannot race with it.
+func (a *App) restartWatcher() {
+	a.watcherMu.Lock()
+	defer a.watcherMu.Unlock()
+	a.closeWatcher()
+
+	manager := a.manager
+	w, err := watcher.New(manager.GetDataDir(), watchDebounce, func(_ []string) {
+		if err := manager.LoadAll(); err != nil {
+			slog.Warn("hot reload failed to reload snippets", "error", err)
+			return
+		}
+		runtime.EventsEmit(a.ctx, snippetsChangedEvent)
+	})
+	if err != nil {
+		slog.Warn("hot reload disabled", "dir", manager.GetDataDir(), "error", err)
+		return
+	}
+	a.watcher = w
+}
+
+// closeWatcher must be called with watcherMu held.
+func (a *App) closeWatcher() {
+	if a.watcher == nil {
+		return
+	}
+	if err := a.watcher.Close(); err != nil {
+		slog.Warn("failed to close file watcher", "error", err)
+	}
+	a.watcher = nil
+}
+
+func (a *App) markSelfWrite(paths ...string) {
+	a.watcherMu.Lock()
+	defer a.watcherMu.Unlock()
+	if a.watcher == nil {
+		return
+	}
+	for _, p := range paths {
+		if p != "" {
+			a.watcher.MarkSelfWrite(p)
+		}
+	}
+}
+
+// saveSnippet saves through the manager and marks both the old and new file paths as self-written.
+func (a *App) saveSnippet(snippet *core.Snippet) error {
+	oldPath, _ := a.manager.FilePath(snippet.ID)
+	err := a.manager.Save(snippet)
+	newPath, _ := a.manager.FilePath(snippet.ID)
+	a.markSelfWrite(oldPath, newPath)
+	return err
 }
 
 // GetAllSnippets returns all snippets
@@ -69,12 +144,15 @@ func (a *App) GetSnippet(id string) (*core.Snippet, error) {
 
 // SaveSnippet saves a snippet
 func (a *App) SaveSnippet(snippet *core.Snippet) error {
-	return a.manager.Save(snippet)
+	return a.saveSnippet(snippet)
 }
 
 // DeleteSnippet deletes a snippet by ID
 func (a *App) DeleteSnippet(id string) error {
-	return a.manager.Delete(id)
+	path, _ := a.manager.FilePath(id)
+	err := a.manager.Delete(id)
+	a.markSelfWrite(path)
+	return err
 }
 
 // ConfirmDialog shows a native Yes/No dialog because window.confirm is a no-op in the macOS webview.
@@ -165,6 +243,7 @@ func (a *App) SetDataDirectory(path string) error {
 	}
 
 	a.manager = newManager
+	a.restartWatcher()
 	return nil
 }
 
@@ -178,7 +257,7 @@ func (a *App) BrowseForDirectory() (string, error) {
 // CreateSnippet creates a new snippet with the given title
 func (a *App) CreateSnippet(title string) (*core.Snippet, error) {
 	snippet := core.NewSnippet(title)
-	if err := a.manager.Save(snippet); err != nil {
+	if err := a.saveSnippet(snippet); err != nil {
 		return nil, err
 	}
 	return snippet, nil

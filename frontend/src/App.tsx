@@ -5,6 +5,7 @@ import { SnippetEditor } from './components/SnippetEditor';
 import { TagList } from './components/TagList';
 import { SettingsPage } from './components/SettingsPage';
 import { app } from './bridge';
+import { useHotReload } from './hooks/useHotReload';
 
 function App() {
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
@@ -51,6 +52,13 @@ function App() {
   const handleListRefresh = useCallback(() => {
     setListRefreshKey((k) => k + 1);
   }, []);
+
+  const { changedOnDisk } = useHotReload({
+    selectedSnippet,
+    setSelectedSnippet,
+    isDirtyRef,
+    refreshList: handleListRefresh,
+  });
 
   const handleDelete = () => {
     setSelectedSnippet(null);
@@ -140,6 +148,7 @@ function App() {
             onDelete={handleDelete}
             onDirtyChange={handleDirtyChange}
             onListRefresh={handleListRefresh}
+            changedOnDisk={changedOnDisk}
           />
         </main>
       </div>

@@ -17,6 +17,7 @@ interface SnippetEditorProps {
   onDelete: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onListRefresh?: () => void;
+  changedOnDisk?: boolean;
 }
 
 export function SnippetEditor({
@@ -25,6 +26,7 @@ export function SnippetEditor({
   onDelete,
   onDirtyChange,
   onListRefresh,
+  changedOnDisk = false,
 }: SnippetEditorProps) {
   // Form state management
   const form = useSnippetForm(snippet);
@@ -211,6 +213,7 @@ ${form.body}`;
           title={form.title}
           onTitleChange={form.setTitle}
           saveStatus={saveStatus}
+          changedOnDisk={changedOnDisk}
           isFavorite={form.isFavorite}
           onToggleFavorite={handleToggleFavorite}
           rawMode={rawMode}
