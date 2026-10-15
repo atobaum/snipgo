@@ -18,6 +18,7 @@ type fakeResp struct {
 type fakeRunner struct {
 	responses map[string][]fakeResp
 	calls     []string
+	onCall    map[string]func()
 }
 
 func newFakeRunner() *fakeRunner {
@@ -30,9 +31,15 @@ func newFakeRunner() *fakeRunner {
 
 func (f *fakeRunner) set(key string, resps ...fakeResp) { f.responses[key] = resps }
 
-func (f *fakeRunner) Run(_ context.Context, _ string, args ...string) (string, string, error) {
+func (f *fakeRunner) Run(ctx context.Context, _ string, args ...string) (string, string, error) {
 	key := strings.Join(args, " ")
 	f.calls = append(f.calls, key)
+	if err := ctx.Err(); err != nil {
+		return "", "", err
+	}
+	if hook := f.onCall[key]; hook != nil {
+		hook()
+	}
 	resps := f.responses[key]
 	if len(resps) == 0 {
 		return "", "", nil
@@ -62,6 +69,8 @@ func newTestSyncer(r Runner, mode Mode) *Syncer {
 		LookPath: func(string) (string, error) { return "/usr/bin/git", nil },
 	})
 }
+
+const conflictKey = "-c core.quotePath=false diff --name-only --diff-filter=U -- ."
 
 const commitKey = "commit -m snipgo sync: 2026-10-15 21:50 (host) -- ."
 
@@ -171,6 +180,7 @@ func TestSync_PullFailures(t *testing.T) {
 	}{
 		{name: "manual conflict", mode: ModeManual, conflicts: "a.md\nb.md\n", wantFiles: []string{"a.md", "b.md"}},
 		{name: "conflict left by -X strategy", mode: ModeRemote, conflicts: "a.md\n", wantFiles: []string{"a.md"}},
+		{name: "non-ASCII file name", mode: ModeManual, conflicts: "한글.md\n", wantFiles: []string{"한글.md"}},
 		{name: "network failure", mode: ModeManual, conflicts: "", wantOp: "pull"},
 	}
 	for _, tt := range tests {
@@ -184,7 +194,7 @@ func TestSync_PullFailures(t *testing.T) {
 				pullKey += " -X theirs"
 			}
 			f.set(pullKey, pullFail)
-			f.set("diff --name-only --diff-filter=U", fakeResp{stdout: tt.conflicts})
+			f.set(conflictKey, fakeResp{stdout: tt.conflicts})
 			_, err := newTestSyncer(f, tt.mode).Sync(context.Background())
 
 			if tt.wantFiles != nil {
@@ -258,5 +268,21 @@ func TestSync_CommitFailureIsGitError(t *testing.T) {
 	var ge *GitError
 	if !errors.As(err, &ge) || ge.Op != "commit" {
 		t.Fatalf("error = %v, want *GitError op commit", err)
+	}
+}
+
+func TestSync_ConflictAbortedWhenContextEndsMidPull(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := newFakeRunner()
+	f.onCall = map[string]func(){"pull --no-rebase --no-edit": cancel}
+	f.set("pull --no-rebase --no-edit", fakeResp{err: errors.New("exit status 1"), stderr: "CONFLICT"})
+	f.set(conflictKey, fakeResp{stdout: "a.md\n"})
+	_, err := newTestSyncer(f, ModeManual).Sync(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context.Canceled", err)
+	}
+	if !f.called("merge --abort") {
+		t.Error("merge --abort must still run after the context ended")
 	}
 }

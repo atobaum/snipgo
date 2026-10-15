@@ -39,7 +39,9 @@ func NewStatus(ev Event) Status {
 	st.ErrorKind, st.Message = Describe(ev.Err)
 	var ce *ConflictError
 	if errors.As(ev.Err, &ce) {
-		st.ConflictFiles = ce.Files
+		if ce.Files != nil {
+			st.ConflictFiles = ce.Files
+		}
 	}
 	return st
 }

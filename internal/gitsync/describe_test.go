@@ -65,3 +65,10 @@ func TestNewStatus(t *testing.T) {
 		t.Errorf("conflict status = %+v", bad)
 	}
 }
+
+func TestNewStatus_ConflictFilesNeverNil(t *testing.T) {
+	st := NewStatus(Event{Err: &ConflictError{}})
+	if st.ConflictFiles == nil {
+		t.Error("ConflictFiles = nil, want empty slice")
+	}
+}

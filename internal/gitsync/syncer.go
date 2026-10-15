@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const cleanupTimeout = 10 * time.Second
+
 type Mode string
 
 const (
@@ -141,7 +143,10 @@ func (s *Syncer) pull(ctx context.Context) error {
 	if pullErr == nil {
 		return nil
 	}
-	out, err := s.git(ctx, "status", "diff", "--name-only", "--diff-filter=U")
+	// The merge must be aborted even when ctx already ended, or the next run sees a merge in progress.
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	defer cancel()
+	out, err := s.git(cleanupCtx, "status", "-c", "core.quotePath=false", "diff", "--name-only", "--diff-filter=U", "--", ".")
 	if err != nil {
 		return pullErr
 	}
@@ -154,7 +159,7 @@ func (s *Syncer) pull(ctx context.Context) error {
 	if len(files) == 0 {
 		return pullErr
 	}
-	if _, err := s.git(ctx, "merge", "merge", "--abort"); err != nil {
+	if _, err := s.git(cleanupCtx, "merge", "merge", "--abort"); err != nil {
 		return err
 	}
 	return &ConflictError{Files: files}
